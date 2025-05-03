@@ -1,0 +1,11 @@
+{
+    "month": "1",
+    "targets": [
+        {
+            "courtType": "テニス（人工芝）",
+            "courtName": "木場公園",
+            "date": "1",
+            "startHour": "17"
+        }
+    ]
+}
