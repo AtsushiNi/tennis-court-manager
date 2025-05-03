@@ -1,70 +1,94 @@
 const { chromium } = require('playwright');
+const fs = require('fs');
+const csv = require('csv-parser');
 
 (async () => {
-  // ブラウザを起動
-  const browser = await chromium.launch({ headless: false });
-  const context = await browser.newContext();
-  const page = await context.newPage();
+  // members.csvからユーザーリストを読み込む
+  const users = [];
+  await new Promise((resolve, reject) => {
+    fs.createReadStream('members.csv')
+      .pipe(csv())
+      .on('data', (row) => {
+        users.push({
+          id: row.ID,
+          password: row.PW,
+          name: row.名前
+        });
+      })
+      .on('end', resolve)
+      .on('error', reject);
+  });
 
-  const targetCourtType = 'テニス（人工芝）'
-  const targetCourtName = '木場公園'
-  const targetDate = 17
-  const userNumber = 10023779
-  const password = 'atsushi@0731'
+  // 各ユーザーに対して処理を実行
+  for (const user of users) {
+    console.log(`\n=== 処理開始: ${user.name} (${user.id}) ===`);
 
-  // コートタイプのバリデーション
-  const validCourtTypes = ['テニス（人工芝）', 'テニス（ハード）'];
-  if (!validCourtTypes.includes(targetCourtType)) {
-    console.error('エラー: 無効なコートタイプです。許可される値:');
-    validCourtTypes.forEach(type => console.error(`- ${type}`));
-    process.exit(1);
-  }
+    // ブラウザを起動
+    const browser = await chromium.launch({ headless: false });
+    const context = await browser.newContext();
+    const page = await context.newPage();
 
-  try {
-    // ログイン処理
-    await login(page, userNumber, password);
+    const targetCourtType = 'テニス（人工芝）';
+    const targetCourtName = '木場公園';
+    const targetDate = 17;
+    const userNumber = user.id;
+    const password = user.password;
 
-    // 抽選申込みページへ遷移
-    await navigateToLotteryPage(page);
+    // コートタイプのバリデーション
+    const validCourtTypes = ['テニス（人工芝）', 'テニス（ハード）'];
+    if (!validCourtTypes.includes(targetCourtType)) {
+      console.error('エラー: 無効なコートタイプです。許可される値:');
+      validCourtTypes.forEach(type => console.error(`- ${type}`));
+      await browser.close();
+      continue;
+    }
 
-    // 予約するコートを選択
-    await page.waitForLoadState('networkidle')
-    const favoriteCourtButton = await page.getByRole('button', { name: targetCourtName }).isVisible();
-    if (favoriteCourtButton) {
-      // 予約対象のコートを選択
-      await page.getByRole('button', { name: targetCourtName }).click();
-      console.log(`${targetCourtName}を選択`);
-    } else {
-      // お気に入りコート登録処理
-      await registerFavoriteCourt(page, targetCourtName, targetCourtType);
+    try {
+      // ログイン処理
+      await login(page, userNumber, password);
 
       // 抽選申込みページへ遷移
       await navigateToLotteryPage(page);
 
-      // 予約対象のコートを選択
-      await page.getByRole('button', { name: targetCourtName }).click();
-      console.log(`${targetCourtName}を選択`);
-    }
+      // 予約するコートを選択
+      await page.waitForLoadState('networkidle')
+      const favoriteCourtButton = await page.getByRole('button', { name: targetCourtName }).isVisible();
+      if (favoriteCourtButton) {
+        // 予約対象のコートを選択
+        await page.getByRole('button', { name: targetCourtName }).click();
+        console.log(`${targetCourtName}を選択`);
+      } else {
+        // お気に入りコート登録処理
+        await registerFavoriteCourt(page, targetCourtName, targetCourtType);
 
-    // 対象日が表示されるまで翌週ボタンをクリック
-    while (!(await page.locator('th[id^="usedate-theader-"]').filter({
-      hasText: targetDate + '日'
-    }).count())) {
-      await Promise.all([
-        page.waitForSelector('#usedate-loading', { state: 'hidden', timeout: 30000 }),
-        page.waitForLoadState('networkidle')
-      ]);
-      
-      await page.getByRole('button', { name: '翌週' }).click({ force: true });
-      await page.waitForSelector('#usedate-loading', { state: 'hidden', timeout: 30000 }),
-      console.log('翌週ボタンをクリック');
-    }
+        // 抽選申込みページへ遷移
+        await navigateToLotteryPage(page);
 
-  } catch (error) {
-    console.error('エラーが発生しました:', error);
-  } finally {
-    // ブラウザを閉じる
-    // await browser.close();
+        // 予約対象のコートを選択
+        await page.getByRole('button', { name: targetCourtName }).click();
+        console.log(`${targetCourtName}を選択`);
+      }
+
+      // 対象日が表示されるまで翌週ボタンをクリック
+      while (!(await page.locator('th[id^="usedate-theader-"]').filter({
+        hasText: targetDate + '日'
+      }).count())) {
+        await Promise.all([
+          page.waitForSelector('#usedate-loading', { state: 'hidden', timeout: 30000 }),
+          page.waitForLoadState('networkidle')
+        ]);
+        
+        await page.getByRole('button', { name: '翌週' }).click({ force: true });
+        await page.waitForSelector('#usedate-loading', { state: 'hidden', timeout: 30000 }),
+        console.log('翌週ボタンをクリック');
+      }
+
+    } catch (error) {
+      console.error('エラーが発生しました:', error);
+    } finally {
+      // ブラウザを閉じる
+      await browser.close();
+    }
   }
 })();
 
@@ -105,6 +129,7 @@ async function registerFavoriteCourt(page, courtName, courtType) {
 
   // 抽選申込みお気に入り登録をクリック
   await page.getByRole('link', { name: '抽選申込みお気に入り登録' }).click();
+  await page.waitForLoadState('networkidle')
   console.log('抽選申込みお気に入り登録をクリック');
 
   // 登録名を入力
