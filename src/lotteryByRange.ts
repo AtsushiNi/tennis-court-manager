@@ -4,12 +4,12 @@ const readline = createInterface({
   input: process.stdin,
   output: process.stdout
 });
-import { LotteryResult, readLotteryInfo, initLogFile, appendLog } from './fileIO';
+import { LotteryInfo, readLotteryInfo, initLogFile, appendLog } from './fileIO';
 import { login, registerFavoriteCourt, navigateToLotteryPage, selectLotteryCell, confirmLottery } from './browserOperations';
 
 (async () => {
   // 抽選情報をlotteryInfo.csvから読み込み
-  const lotteryInfo: LotteryResult[] = await readLotteryInfo();
+  const lotteryInfo: LotteryInfo[] = await readLotteryInfo();
 
   // 抽選番号の範囲を標準入力から取得
   const [start, end] = await new Promise<number[]>((resolve) => {
@@ -41,12 +41,12 @@ import { login, registerFavoriteCourt, navigateToLotteryPage, selectLotteryCell,
   for (const info of filteredInfo) {
     const lotteryNo = info.lotteryNo;
     const userName = info.name;
-    const userNumber = parseInt(info.id);
+    const userNumber = info.id;
     const password = info.password;
     const courtName = info.courtName;
     const courtType = info.courtType;
     const date = info.date;
-    const startHour = parseInt(info.startHour);
+    const startHour = info.startHour;
 
     log('')
     log(`=== 処理開始: #${lotteryNo} ===`);

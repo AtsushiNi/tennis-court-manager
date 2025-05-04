@@ -3,13 +3,13 @@ import csv from 'csv-parser';
 
 const logDir = 'logs';
 
-export interface MemberRow {
+interface MemberRow {
   ID: string;
   PW: string;
   名前: string;
 }
 
-export interface LotteryInfoRow {
+interface LotteryInfoRow {
   抽選番号: string;
   利用者氏名: string;
   利用者ID: string;
@@ -23,7 +23,7 @@ export interface LotteryInfoRow {
 
 export interface User {
   lotteryNo: number;
-  id: string;
+  id: number;
   password: string;
   name: string;
 }
@@ -31,26 +31,26 @@ export interface User {
 export interface Target {
   courtType: string;
   courtName: string;
-  date: string;
-  startHour: string;
+  date: number;
+  startHour: number;
   users: User[];
 }
 
 export interface LotterySetting {
-  month: string;
+  month: number;
   targets: Target[];
 }
 
-export interface LotteryResult {
+export interface LotteryInfo {
   lotteryNo: number;
   name: string;
-  id: string;
+  id: number;
   password: string;
   courtType: string;
   courtName: string;
-  month: string;
-  date: string;
-  startHour: string;
+  month: number;
+  date: number;
+  startHour: number;
 }
 
 // lotterySetting.jsonからターゲット情報を読み込む
@@ -83,7 +83,7 @@ export async function readMembers(): Promise<User[]> {
       .on('data', (row: MemberRow) => {
         users.push({
           lotteryNo: sequenceNumber++,
-          id: row.ID,
+          id: parseInt(row.ID),
           password: row.PW,
           name: row.名前
         });
@@ -115,11 +115,11 @@ export function saveLotteryInfo(lotterySetting: LotterySetting): void {
 }
 
 // 抽選情報をlotteryInfo.csvから読み込み
-export async function readLotteryInfo(): Promise<LotteryResult[]> {
+export async function readLotteryInfo(): Promise<LotteryInfo[]> {
   const fileName = 'lotteryInfo.csv';
   console.log(`${logDir}/${fileName}から抽選情報を読み込みます`);
 
-  const results: LotteryResult[] = [];
+  const results: LotteryInfo[] = [];
   await new Promise((resolve, reject) => {
     fs.createReadStream(`${logDir}/${fileName}`)
       .pipe(csv())
@@ -127,13 +127,13 @@ export async function readLotteryInfo(): Promise<LotteryResult[]> {
         results.push({
           lotteryNo: parseInt(row['抽選番号']),
           name: row['利用者氏名'],
-          id: row['利用者ID'],
+          id: parseInt(row['利用者ID']),
           password: row['利用者パスワード'],
           courtType: row['コートタイプ'],
           courtName: row['コート名'],
-          month: row['抽選月'],
-          date: row['対象日付'],
-          startHour: row['開始時間']
+          month: parseInt(row['抽選月']),
+          date: parseInt(row['対象日付']),
+          startHour: parseInt(row['開始時間'])
         });
       })
       .on('end', resolve)

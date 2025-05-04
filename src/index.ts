@@ -54,14 +54,14 @@ import { Target, readLotterySetting, readMembers, saveLotteryInfo, initLogFile, 
 
     // グループ内のユーザーを処理
     for (const user of target.users) {
-      const lotteryNo: number = user.lotteryNo;
+      const lotteryNo = user.lotteryNo;
       const userName = user.name;
       const userNumber = user.id;
       const password = user.password;
 
       log('');
-      log(`=== 処理開始: #${lotteryNo.toString()} ${userName} (利用者番号: ${userNumber}) ===`);
-      console.log(`=== 処理開始: #${lotteryNo.toString()} ${userName} (利用者番号: ${userNumber}) ===`);
+      log(`=== 処理開始: #${lotteryNo} ${userName} (利用者番号: ${userNumber}) ===`);
+      console.log(`=== 処理開始: #${lotteryNo} ${userName} (利用者番号: ${userNumber}) ===`);
 
       // ブラウザを起動
       let browser;
@@ -76,8 +76,8 @@ import { Target, readLotterySetting, readMembers, saveLotteryInfo, initLogFile, 
         // ログイン処理
         const isSuccessLogin = await login(page, log, Number(userNumber), password);
         if (!isSuccessLogin) {
-          log(`Warning: ログインに失敗しました. #${lotteryNo.toString()}, 氏名: ${userName}, 利用者番号: ${userNumber}`)
-          console.log(`Warning: ログインに失敗しました. #${lotteryNo.toString()}, 氏名: ${userName}, 利用者番号: ${userNumber}`)
+          log(`Warning: ログインに失敗しました. #${lotteryNo}, 氏名: ${userName}, 利用者番号: ${userNumber}`)
+          console.log(`Warning: ログインに失敗しました. #${lotteryNo}, 氏名: ${userName}, 利用者番号: ${userNumber}`)
           continue;
         }
 
@@ -99,7 +99,7 @@ import { Target, readLotterySetting, readMembers, saveLotteryInfo, initLogFile, 
         log(`${targetCourtName}を選択`);
 
         // 抽選申込みする枠を選択
-        await selectLotteryCell(page, log, targetDate, Number(targetStartHour));
+        await selectLotteryCell(page, log, targetDate, targetStartHour);
         await page.getByRole('button', { name: ' 申込み' }).click();
 
         // 申込みを確定
@@ -110,7 +110,7 @@ import { Target, readLotterySetting, readMembers, saveLotteryInfo, initLogFile, 
           await page.getByRole('button', { name: '続けて申込み'}).click();
 
           // 抽選申込みする枠を選択
-          await selectLotteryCell(page, log, targetDate, Number(targetStartHour));
+          await selectLotteryCell(page, log, targetDate, targetStartHour);
           await page.getByRole('button', { name: ' 申込み' }).click();
 
           // 申込みを確定

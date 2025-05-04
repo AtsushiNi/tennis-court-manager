@@ -121,7 +121,7 @@ async function getCell(table: any, rowText: string, colText: string) {
 }
 
 // 抽選申込みのコマを選択する
-export async function selectLotteryCell(page: Page, log: (msg: string) => void, date: string, startHour: number) {
+export async function selectLotteryCell(page: Page, log: (msg: string) => void, date: number, startHour: number) {
   // 対象日が表示されるまで翌週ボタンをクリック
   while (!(await page.locator('th[id^="usedate-theader-"]').filter({
     hasText: date + '日'
