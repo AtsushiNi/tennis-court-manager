@@ -3,12 +3,14 @@ import csv from 'csv-parser';
 
 const logDir = 'logs';
 
+// members.csvの型
 interface MemberRow {
   ID: string;
   PW: string;
   名前: string;
 }
 
+// lotteryInfo.csvの型
 interface LotteryInfoRow {
   抽選番号: string;
   利用者氏名: string;
