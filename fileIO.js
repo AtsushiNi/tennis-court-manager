@@ -7,7 +7,7 @@ const logDir = 'logs';
 function readLotterySetting() {
   console.log('lotterySetting.jsonから抽選ターゲット情報を読み込みます');
 
-  return JSON.parse(fs.readFileSync('lotterySetting.json', 'utf8'));
+  return JSON.parse(fs.readFileSync('input/lotterySetting.json', 'utf8'));
 }
 
 // members.csvからユーザーリストを読み込む
@@ -17,7 +17,7 @@ async function readMembers() {
   const users = [];
   let sequenceNumber = 1;
   await new Promise((resolve, reject) => {
-    fs.createReadStream('members.csv')
+    fs.createReadStream('input/members.csv')
       .pipe(csv())
       .on('data', (row) => {
         users.push({
