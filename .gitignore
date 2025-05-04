@@ -109,5 +109,4 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-members.csv
-lotterySetting.json
+input
