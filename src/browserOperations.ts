@@ -1,8 +1,8 @@
-const { chromium } = require('playwright');
-const { toFullWidthNumber } = require('./util');
+import { Page } from 'playwright';
+import { toFullWidthNumber } from './util';
 
 // システムにログインする
-async function login(page, log, userNumber, password) {
+export async function login(page: Page, log: (msg: string) => void, userNumber: number, password: string): Promise<boolean> {
   // テニスコート予約サイトにアクセス（タイムアウト60秒、DOMContentLoadedまで待機）
   await page.goto('https://kouen.sports.metro.tokyo.lg.jp/web/', {
     timeout: 60000,
@@ -28,7 +28,7 @@ async function login(page, log, userNumber, password) {
 
   // ログイン成功可否を確認
   await page.waitForLoadState('networkidle');
-  const newsDisplay = await page.getByLabel('お知らせ', { timeout: 5000 });
+  const newsDisplay = await page.getByLabel('お知らせ');
   if (await newsDisplay.count()) {
     return true;
   } else {
@@ -37,7 +37,7 @@ async function login(page, log, userNumber, password) {
 }
 
 // お気に入りコートを登録する
-async function registerFavoriteCourt(page, log, courtName, courtType) {
+export async function registerFavoriteCourt(page: Page, log: (msg: string) => void, courtName: string, courtType: string) {
   // 抽選メニューをクリック
   log('お気に入り登録が見つかりませんでした')
   await page.getByRole('link', { name: '抽選 ⏷' }).click();
@@ -63,7 +63,7 @@ async function registerFavoriteCourt(page, log, courtName, courtType) {
   // 施設を選択
   const facilitySelect = page.getByLabel('施設必須');
   await facilitySelect.selectOption({ index: 1 });
-  const selectedFacility = await facilitySelect.evaluate(select => select.options[select.selectedIndex].textContent.trim());
+  const selectedFacility = await facilitySelect.evaluate((select: HTMLSelectElement) => select.options[select.selectedIndex].textContent?.trim() || '');
   log(`施設を選択: ${selectedFacility}`);
 
   // 設定ボタンをクリック
@@ -74,7 +74,7 @@ async function registerFavoriteCourt(page, log, courtName, courtType) {
 }
 
 // 抽選申込みページへ遷移する
-async function navigateToLotteryPage(page, log) {
+export async function navigateToLotteryPage(page: Page, log: (msg: string) => void) {
   // 抽選メニューをクリック
   await page.getByRole('link', { name: '抽選 ⏷' }).click();
   log('抽選メニューをクリック');
@@ -87,7 +87,7 @@ async function navigateToLotteryPage(page, log) {
 }
 
 // テーブルから指定した行と列のテキストに一致するセルを取得する
-async function getCell(table, rowText, colText) {
+async function getCell(table: any, rowText: string, colText: string) {
   // テーブル上の対象列のindexを取得
   const headers = await table.locator('thead th');
   const headersCount = await headers.count();
@@ -114,11 +114,14 @@ async function getCell(table, rowText, colText) {
   }
 
   // 特定したセルのロケーターを返す
+  if (rowIndex === undefined || colIndex === undefined) {
+    throw new Error('Could not find matching cell');
+  }
   return table.locator(`tbody tr:nth-child(${rowIndex + 1}) td:nth-child(${colIndex + 1})`);
 }
 
 // 抽選申込みのコマを選択する
-async function selectLotteryCell(page, log, date, startHour) {
+export async function selectLotteryCell(page: Page, log: (msg: string) => void, date: string, startHour: number) {
   // 対象日が表示されるまで翌週ボタンをクリック
   while (!(await page.locator('th[id^="usedate-theader-"]').filter({
     hasText: date + '日'
@@ -143,14 +146,14 @@ async function selectLotteryCell(page, log, date, startHour) {
 }
 
 // 抽選申込みを確定する
-async function confirmLottery(page, log, userName) {
+export async function confirmLottery(page: Page, log: (msg: string) => void, userName: string): Promise<number> {
   const row = await page.locator('#lottery-confirm > table tbody tr:nth-child(1)');
-  const courtName = await row.locator('td:nth-child(2)').evaluate((td) => {
-    return td.textContent.replace(td.querySelector('span').textContent, '').trim();
+  const courtName = await row.locator('td:nth-child(2)').evaluate((td: HTMLElement) => {
+    return td.textContent?.replace(td.querySelector('span')?.textContent || '', '').trim() || '';
   });
-  const date = await row.locator('td:nth-child(4) span:nth-child(2)').evaluate(el => el.textContent.trim());
-  const hour = await row.locator('td:nth-child(5)').evaluate((td) => {
-    return td.textContent.replace(td.querySelector('span').textContent, '').trim();
+  const date = await row.locator('td:nth-child(4) span:nth-child(2)').evaluate((el: HTMLElement) => el.textContent?.trim() || '');
+  const hour = await row.locator('td:nth-child(5)').evaluate((td: HTMLElement) => {
+    return td.textContent?.replace(td.querySelector('span')?.textContent || '', '').trim() || '';
   });
 
   // 申込み枠数を確認する
@@ -162,7 +165,7 @@ async function confirmLottery(page, log, userName) {
     return 0;
   }
 
-  let remainNumber; // 残り申込み枠数
+  let remainNumber = 0; // 残り申込み枠数
   if (optionNumber == 2) { // 1枠目で申込み
     log(`${userName} 1枠目で ${courtName} ${date} ${hour} を抽選申込みします`);
     console.log(`${userName} 1枠目で ${courtName} ${date} ${hour} を抽選申込みします`);
@@ -179,11 +182,3 @@ async function confirmLottery(page, log, userName) {
 
   return remainNumber;
 }
-
-module.exports = {
-  login,
-  registerFavoriteCourt,
-  navigateToLotteryPage,
-  selectLotteryCell,
-  confirmLottery
-};

@@ -1,18 +1,19 @@
-const { chromium } = require('playwright');
-const readline = require('readline').createInterface({
+import { chromium } from 'playwright';
+import { createInterface } from 'readline';
+const readline = createInterface({
   input: process.stdin,
   output: process.stdout
 });
-const fileIO = require('./fileIO');
-const { login, registerFavoriteCourt, navigateToLotteryPage, selectLotteryCell, confirmLottery } = require('./browserOperations');
+import { LotteryResult, readLotteryInfo, initLogFile, appendLog } from './fileIO';
+import { login, registerFavoriteCourt, navigateToLotteryPage, selectLotteryCell, confirmLottery } from './browserOperations';
 
 (async () => {
   // 抽選情報をlotteryInfo.csvから読み込み
-  const lotteryInfo = await fileIO.readLotteryInfo();
+  const lotteryInfo: LotteryResult[] = await readLotteryInfo();
 
   // 抽選番号の範囲を標準入力から取得
-  const [start, end] = await new Promise((resolve) => {
-    readline.question('実行したい抽選番号の開始値と終了値をスペース区切りで入力してください (例: 10 20): ', (input) => {
+  const [start, end] = await new Promise<number[]>((resolve) => {
+    readline.question('実行したい抽選番号の開始値と終了値をスペース区切りで入力してください (例: 10 20): ', (input: string) => {
       const numbers = input.trim().split(' ').map(Number);
       readline.close();
       resolve(numbers);
@@ -33,19 +34,19 @@ const { login, registerFavoriteCourt, navigateToLotteryPage, selectLotteryCell, 
 
   // ログファイルを初期化
   const logFileName = `range_lotteryNo-${start}-${end}.log`
-  const logFilePath = fileIO.initLogFile(logFileName);
-  const log = (message) => fileIO.appendLog(logFilePath, message);
+  const logFilePath = initLogFile(logFileName);
+  const log = (message: string) => appendLog(logFilePath, message);
 
   // 抽出した抽選情報を処理
   for (const info of filteredInfo) {
     const lotteryNo = info.lotteryNo;
     const userName = info.name;
-    const userNumber = info.id;
+    const userNumber = parseInt(info.id);
     const password = info.password;
     const courtName = info.courtName;
     const courtType = info.courtType;
     const date = info.date;
-    const startHour = info.startHour;
+    const startHour = parseInt(info.startHour);
 
     log('')
     log(`=== 処理開始: #${lotteryNo} ===`);
@@ -58,7 +59,7 @@ const { login, registerFavoriteCourt, navigateToLotteryPage, selectLotteryCell, 
     const browser = await chromium.launch({ headless: false });
     const context = await browser.newContext();
     const page = await context.newPage();
-    page.on('dialog', async dialog => {
+    page.on('dialog', async (dialog: import('playwright').Dialog) => {
       await dialog.accept();
     });
 

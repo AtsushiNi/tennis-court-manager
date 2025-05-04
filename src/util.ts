@@ -1,10 +1,10 @@
 /**
  * 数字を全角に変換する
- * @param {number|string} num - 変換する数字（数値または文字列）
- * @returns {string} 全角数字の文字列
+ * @param num - 変換する数字（数値または文字列）
+ * @returns 全角数字の文字列
  */
-function toFullWidthNumber(num) {
-  const halfToFullMap = {
+function toFullWidthNumber(num: number | string): string {
+  const halfToFullMap: Record<string, string> = {
     '0': '０',
     '1': '１',
     '2': '２',
@@ -20,6 +20,4 @@ function toFullWidthNumber(num) {
   return String(num).replace(/[0-9]/g, match => halfToFullMap[match]);
 }
 
-module.exports = {
-  toFullWidthNumber
-};
+export { toFullWidthNumber };
