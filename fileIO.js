@@ -53,12 +53,40 @@ function saveLotteryInfo(lotterySetting) {
   csvWriter.end();
 }
 
+// 抽選情報をlotteryInfo.csvから読み込み
+async function readLotteryInfo() {
+  const fileName = 'lotteryInfo.csv';
+  console.log(`${logDir}/${fileName}から抽選情報を読み込みます`);
+
+  const results = [];
+  await new Promise((resolve, reject) => {
+    fs.createReadStream(`${logDir}/${fileName}`)
+      .pipe(csv())
+      .on('data', (row) => {
+        results.push({
+          lotteryNo: parseInt(row['抽選番号']),
+          name: row['利用者氏名'],
+          id: row['利用者ID'],
+          password: row['利用者パスワード'],
+          courtType: row['コートタイプ'],
+          courtName: row['コート名'],
+          month: row['抽選月'],
+          date: row['対象日付'],
+          startHour: row['開始時間']
+        });
+      })
+      .on('end', resolve)
+      .on('error', reject);
+  });
+  return results;
+}
+
 // ログファイルを初期化
-function initLogFile(index, targetMonth, targetDate, targetCourtName, targetStartHour) {
-  const logFileName = `${logDir}/${index}_${targetMonth}-${targetDate}${targetCourtName.replace(/\s+/g, '_')}_${targetStartHour}.log`;
+function initLogFile(logFileName) {
+  const logFilePath = `${logDir}/${logFileName}`
   fs.mkdirSync(logDir, { recursive: true });
-  fs.writeFileSync(logFileName, ''); // 空ファイルを作成
-  return logFileName;
+  fs.writeFileSync(logFilePath, ''); // 空ファイルを作成
+  return logFilePath;
 }
 
 // ログにメッセージを追加
@@ -73,6 +101,7 @@ module.exports = {
   readLotterySetting,
   readMembers,
   saveLotteryInfo,
+  readLotteryInfo,
   initLogFile,
   appendLog
 };

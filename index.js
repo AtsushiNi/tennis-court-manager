@@ -1,5 +1,6 @@
 const { chromium } = require('playwright');
 const fileIO = require('./fileIO');
+const { login, registerFavoriteCourt, navigateToLotteryPage } = require('./browserOperations');
 
 (async () => {
   // lotterySetting.jsonから抽選設定を読み込む
@@ -30,10 +31,11 @@ const fileIO = require('./fileIO');
     const targetStartHour = target.startHour;
 
     // ログファイルを初期化
-    const logFileName = fileIO.initLogFile(index, lotterySetting.month, targetDate, targetCourtName, targetStartHour);
+    const logFileName = `${index}_${lotterySetting.month}-${targetDate}${targetCourtName.replace(/\s+/g, '_')}_${targetStartHour}.log`;
+    const logFilePath = fileIO.initLogFile(logFileName);
 
     // ログ出力用関数 (ターゲット単位)
-    const log = (message) => fileIO.appendLog(logFileName, message);
+    const log = (message) => fileIO.appendLog(logFilePath, message);
     
     log(`=== 処理開始 ===`);
     log(`対象コート: ${targetCourtName} (${targetCourtType})`);
@@ -72,24 +74,19 @@ const fileIO = require('./fileIO');
         // 抽選申込みページへ遷移
         await navigateToLotteryPage(page, log);
 
-        // 予約するコートを選択
-        await page.waitForLoadState('networkidle')
-        const favoriteCourtButton = await page.getByRole('button', { name: targetCourtName }).isVisible();
-        if (favoriteCourtButton) {
-          // 予約対象のコートを選択
-          await page.getByRole('button', { name: targetCourtName }).click();
-          log(`${targetCourtName}を選択`);
-        } else {
+        // お気に入りコートに未登録なら登録する
+        await page.waitForLoadState('networkidle');
+        const favoriteCourtButton = await page.getByRole('button', { name: courtName }).isVisible();
+        if (!favoriteCourtButton) {
           // お気に入りコート登録処理
-          await registerFavoriteCourt(page, log, targetCourtName, targetCourtType);
-
+          await registerFavoriteCourt(page, log, courtName, courtType);
           // 抽選申込みページへ遷移
           await navigateToLotteryPage(page, log);
-
-          // 予約対象のコートを選択
-          await page.getByRole('button', { name: targetCourtName }).click();
-          log(`${targetCourtName}を選択`);
         }
+
+        // 予約対象のコートを選択
+        await page.getByRole('button', { name: courtName }).click();
+        log(`${courtName}を選択`);
 
         // 対象日が表示されるまで翌週ボタンをクリック
         while (!(await page.locator('th[id^="usedate-theader-"]').filter({
@@ -115,81 +112,3 @@ const fileIO = require('./fileIO');
     }
   }));
 })();
-
-// システムにログインする
-async function login(page, log, userNumber, password) {
-  // テニスコート予約サイトにアクセス（タイムアウト60秒、DOMContentLoadedまで待機）
-  await page.goto('https://kouen.sports.metro.tokyo.lg.jp/web/', {
-    timeout: 60000,
-    waitUntil: 'domcontentloaded'
-  });
-  log('予約サイトにアクセスしました');
-
-  // ログインボタンをクリック
-  await page.getByRole('button', { name: ' ログイン' }).click();
-  log('ログインボタンをクリック');
-
-  // 利用者番号を入力
-  await page.getByRole('textbox', { name: '利用者番号' }).fill(String(userNumber));
-  log('利用者番号を入力');
-
-  // パスワードを入力
-  await page.getByRole('textbox', { name: 'パスワード' }).fill(password);
-  log('パスワードを入力');
-
-  // ログインボタンをクリック
-  await page.getByRole('button', { name: ' ログイン' }).click();
-  log('ログインを実行');
-
-  log('');
-}
-
-// お気に入りコートを登録する
-async function registerFavoriteCourt(page, log, courtName, courtType) {
-  // 抽選メニューをクリック
-  log('お気に入り登録が見つかりませんでした')
-  await page.getByRole('link', { name: '抽選 ⏷' }).click();
-  log('抽選メニューをクリック');
-
-  // 抽選申込みお気に入り登録をクリック
-  await page.getByRole('link', { name: '抽選申込みお気に入り登録' }).click();
-  await page.waitForLoadState('networkidle')
-  log('抽選申込みお気に入り登録をクリック');
-
-  // 登録名を入力
-  await page.getByRole('textbox', { name: 'お気に入り名 必須' }).fill(courtName);
-  log('お気に入り名を入力');
-
-  // 分類を選択
-  await page.getByLabel('分類必須').selectOption([courtType]);
-  log('分類を選択');
-
-  // 公園を選択
-  await page.getByLabel('公園必須').selectOption([courtName]);
-  log('公園を選択');
-
-  // 施設を選択
-  const facilitySelect = page.getByLabel('施設必須');
-  await facilitySelect.selectOption({ index: 1 });
-  const selectedFacility = await facilitySelect.evaluate(select => select.options[select.selectedIndex].textContent.trim());
-  log(`施設を選択: ${selectedFacility}`);
-
-  // 設定ボタンをクリック
-  await page.getByRole('button', { name: ' 設定' }).click();
-  log('設定ボタンをクリック');
-
-  log('');
-}
-
-// 抽選申込みページへ遷移する
-async function navigateToLotteryPage(page, log) {
-  // 抽選メニューをクリック
-  await page.getByRole('link', { name: '抽選 ⏷' }).click();
-  log('抽選メニューをクリック');
-
-  // 抽選申込みリンクをクリック
-  await page.getByRole('link', { name: '抽選申込み', exact: true }).click();
-  log('抽選申込みをクリック');
-
-  log('');
-}
