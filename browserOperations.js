@@ -25,7 +25,14 @@ async function login(page, log, userNumber, password) {
   await page.getByRole('button', { name: ' ログイン' }).click();
   log('ログインを実行');
 
-  log('');
+  // ログイン成功可否を確認
+  await page.waitForLoadState('networkidle');
+  const newsDisplay = await page.getByLabel('お知らせ', { timeout: 5000 });
+  if (await newsDisplay.count()) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 // お気に入りコートを登録する

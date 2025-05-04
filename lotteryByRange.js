@@ -12,7 +12,7 @@ const { login, registerFavoriteCourt, navigateToLotteryPage } = require('./brows
 
   // 抽選番号の範囲を標準入力から取得
   const [start, end] = await new Promise((resolve) => {
-    readline.question('実行したい抽選番号の開始値と終了値をスペース区切りで入力してください (例: 100 200): ', (input) => {
+    readline.question('実行したい抽選番号の開始値と終了値をスペース区切りで入力してください (例: 10 20): ', (input) => {
       const numbers = input.trim().split(' ').map(Number);
       readline.close();
       resolve(numbers);
@@ -61,7 +61,12 @@ const { login, registerFavoriteCourt, navigateToLotteryPage } = require('./brows
 
     try {
       // ログイン処理
-      await login(page, log, userNumber, password);
+      const isSuccessLogin = await login(page, log, userNumber, password);
+      if (!isSuccessLogin) {
+        log(`Warning: ログインに失敗しました. #${lotteryNo}, 氏名: ${userName}, 利用者番号: ${userNumber}`)
+        console.log(`Warning: ログインに失敗しました. #${lotteryNo}, 氏名: ${userName}, 利用者番号: ${userNumber}`)
+        continue;
+      }
 
       // 抽選申込みページへ遷移
       await navigateToLotteryPage(page, log);

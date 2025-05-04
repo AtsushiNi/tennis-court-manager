@@ -41,12 +41,13 @@ const { login, registerFavoriteCourt, navigateToLotteryPage } = require('./brows
     log(`対象コート: ${targetCourtName} (${targetCourtType})`);
     log(`対象日: ${lotterySetting.month}月${targetDate}日`);
     log(`対象時間: ${targetStartHour}:00~`);
-    log('');
 
     // コートタイプのバリデーション
     const validCourtTypes = ['テニス（人工芝）', 'テニス（ハード）'];
     if (!validCourtTypes.includes(targetCourtType)) {
+      log('');
       log('エラー: 無効なコートタイプです。許可される値:');
+      log('');
       validCourtTypes.forEach(type => log(`- ${type}`));
       await browser.close();
       return;
@@ -59,6 +60,7 @@ const { login, registerFavoriteCourt, navigateToLotteryPage } = require('./brows
       const userNumber = user.id;
       const password = user.password;
 
+      log('');
       log(`=== 処理開始: #${lotteryNo} ${userName} (利用者番号: ${userNumber}) ===`);
       console.log(`=== 処理開始: #${lotteryNo} ${userName} (利用者番号: ${userNumber}) ===`);
 
@@ -69,24 +71,29 @@ const { login, registerFavoriteCourt, navigateToLotteryPage } = require('./brows
 
       try {
         // ログイン処理
-        await login(page, log, userNumber, password);
+        const isSuccessLogin = await login(page, log, userNumber, password);
+        if (!isSuccessLogin) {
+          log(`Warning: ログインに失敗しました. #${lotteryNo}, 氏名: ${userName}, 利用者番号: ${userNumber}`)
+          console.log(`Warning: ログインに失敗しました. #${lotteryNo}, 氏名: ${userName}, 利用者番号: ${userNumber}`)
+          continue;
+        }
 
         // 抽選申込みページへ遷移
         await navigateToLotteryPage(page, log);
 
         // お気に入りコートに未登録なら登録する
         await page.waitForLoadState('networkidle');
-        const favoriteCourtButton = await page.getByRole('button', { name: courtName }).isVisible();
+        const favoriteCourtButton = await page.getByRole('button', { name: targetCourtName }).isVisible();
         if (!favoriteCourtButton) {
           // お気に入りコート登録処理
-          await registerFavoriteCourt(page, log, courtName, courtType);
+          await registerFavoriteCourt(page, log, targetCourtName, targetCourtType);
           // 抽選申込みページへ遷移
           await navigateToLotteryPage(page, log);
         }
 
         // 予約対象のコートを選択
-        await page.getByRole('button', { name: courtName }).click();
-        log(`${courtName}を選択`);
+        await page.getByRole('button', { name: targetCourtName }).click();
+        log(`${targetCourtName}を選択`);
 
         // 対象日が表示されるまで翌週ボタンをクリック
         while (!(await page.locator('th[id^="usedate-theader-"]').filter({
