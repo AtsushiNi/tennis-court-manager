@@ -4,7 +4,7 @@ const readline = require('readline').createInterface({
   output: process.stdout
 });
 const fileIO = require('./fileIO');
-const { login, registerFavoriteCourt, navigateToLotteryPage } = require('./browserOperations');
+const { login, registerFavoriteCourt, navigateToLotteryPage, selectLotteryCell, confirmLottery } = require('./browserOperations');
 
 (async () => {
   // 抽選情報をlotteryInfo.csvから読み込み
@@ -58,6 +58,9 @@ const { login, registerFavoriteCourt, navigateToLotteryPage } = require('./brows
     const browser = await chromium.launch({ headless: false });
     const context = await browser.newContext();
     const page = await context.newPage();
+    page.on('dialog', async dialog => {
+      await dialog.accept();
+    });
 
     try {
       // ログイン処理
@@ -85,20 +88,24 @@ const { login, registerFavoriteCourt, navigateToLotteryPage } = require('./brows
       await page.getByRole('button', { name: courtName }).click();
       log(`${courtName}を選択`);
 
-      // 対象日が表示されるまで翌週ボタンをクリック
-      while (!(await page.locator('th[id^="usedate-theader-"]').filter({
-        hasText: date + '日'
-      }).count())) {
-        await Promise.all([
-          page.waitForSelector('#usedate-loading', { state: 'hidden', timeout: 30000 }),
-          page.waitForLoadState('networkidle')
-        ]);
-        
-        await page.getByRole('button', { name: '翌週' }).click({ force: true });
-        await page.waitForSelector('#usedate-loading', { state: 'hidden', timeout: 30000 });
-        log('翌週ボタンをクリック');
-      }
+      // 抽選申込みする枠を選択
+      await selectLotteryCell(page, log, date, startHour);
+      await page.getByRole('button', { name: ' 申込み' }).click();
 
+      // 申込みを確定
+      const remainNumber = await confirmLottery(page, log, userName);
+
+      // 2枠目の抽選申込み枠があれば、もう一度申込む
+      if (remainNumber) {
+        await page.getByRole('button', { name: '続けて申込み'}).click();
+
+        // 抽選申込みする枠を選択
+        await selectLotteryCell(page, log, date, startHour);
+        await page.getByRole('button', { name: ' 申込み' }).click();
+
+        // 申込みを確定
+        await confirmLottery(page, log, userName);
+      }
     } catch (error) {
       log(`エラーが発生しました: ${error}`);
       console.error(`エラーが発生しました: `, error);
