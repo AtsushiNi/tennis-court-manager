@@ -23,30 +23,28 @@ interface LotteryInfoRow {
   開始時間: string;
 }
 
-export interface User {
-  lotteryNo: number;
+interface User {
   id: number;
   password: string;
   name: string;
 }
 
-export interface Target {
+interface Target {
   courtType: string;
   courtName: string;
   date: number;
   startHour: number;
-  users: User[];
 }
 
-export interface LotterySetting {
+interface LotterySetting {
   month: number;
   targets: Target[];
 }
 
 export interface LotteryInfo {
   lotteryNo: number;
-  name: string;
-  id: number;
+  userName: string;
+  userId: number;
   password: string;
   courtType: string;
   courtName: string;
@@ -78,13 +76,11 @@ export async function readMembers(): Promise<User[]> {
   console.log('members.csvからユーザーリストを読み込みます');
 
   const users: User[] = [];
-  let sequenceNumber = 1;
   await new Promise((resolve, reject) => {
     fs.createReadStream('input/members.csv')
       .pipe(csv())
       .on('data', (row: MemberRow) => {
         users.push({
-          lotteryNo: sequenceNumber++,
           id: parseInt(row.ID),
           password: row.PW,
           name: row.名前
@@ -97,21 +93,22 @@ export async function readMembers(): Promise<User[]> {
 }
 
 // 抽選情報をlotteryInfo.csvに保存
-export function saveLotteryInfo(lotterySetting: LotterySetting): void {
+export function saveLotteryInfo(lotteryInfoList: LotteryInfo[]): void {
   const fileName = 'lotteryInfo.csv';
-  console.log(`${logDir}/${fileName}に抽選情報を出力します`);
+  console.log(`output/${fileName}に抽選情報を出力します`);
 
-  fs.mkdirSync(logDir, { recursive: true });
-  const csvWriter = fs.createWriteStream(`${logDir}/${fileName}`);
+  // lotteryNoで昇順にソート
+  const sortedList = [...lotteryInfoList].sort((a, b) => a.lotteryNo - b.lotteryNo);
+
+  fs.mkdirSync('output', { recursive: true });
+  const csvWriter = fs.createWriteStream(`output/${fileName}`);
   csvWriter.write('抽選番号,利用者氏名,利用者ID,利用者パスワード,コートタイプ,コート名,抽選月,対象日付,開始時間\n');
   
-  lotterySetting.targets.forEach(target => {
-    target.users.forEach(user => {
-      csvWriter.write(
-        `${user.lotteryNo},${user.name},${user.id},${user.password},` +
-        `${target.courtType},${target.courtName},${lotterySetting.month},${target.date},${target.startHour}\n`
-      );
-    });
+  sortedList.forEach(info => {
+    csvWriter.write(
+      `${info.lotteryNo},${info.userName},${info.userId},${info.password},` +
+      `${info.courtType},${info.courtName},${info.month},${info.date},${info.startHour}\n`
+    );
   });
   csvWriter.end();
 }
@@ -119,17 +116,17 @@ export function saveLotteryInfo(lotterySetting: LotterySetting): void {
 // 抽選情報をlotteryInfo.csvから読み込み
 export async function readLotteryInfo(): Promise<LotteryInfo[]> {
   const fileName = 'lotteryInfo.csv';
-  console.log(`${logDir}/${fileName}から抽選情報を読み込みます`);
+  console.log(`output/${fileName}から抽選情報を読み込みます`);
 
   const results: LotteryInfo[] = [];
   await new Promise((resolve, reject) => {
-    fs.createReadStream(`${logDir}/${fileName}`)
+    fs.createReadStream(`output/${fileName}`)
       .pipe(csv())
       .on('data', (row: LotteryInfoRow) => {
         results.push({
           lotteryNo: parseInt(row['抽選番号']),
-          name: row['利用者氏名'],
-          id: parseInt(row['利用者ID']),
+          userName: row['利用者氏名'],
+          userId: parseInt(row['利用者ID']),
           password: row['利用者パスワード'],
           courtType: row['コートタイプ'],
           courtName: row['コート名'],

@@ -110,4 +110,5 @@ dist
 .pnp.*
 
 input
+output
 cline

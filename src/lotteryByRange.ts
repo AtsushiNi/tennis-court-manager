@@ -1,11 +1,10 @@
-import { chromium } from 'playwright';
 import { createInterface } from 'readline';
 const readline = createInterface({
   input: process.stdin,
   output: process.stdout
 });
 import { LotteryInfo, readLotteryInfo, initLogFile, appendLog } from './fileIO';
-import { login, registerFavoriteCourt, navigateToLotteryPage, selectLotteryCell, confirmLottery } from './browserOperations';
+import { lottery } from './lotteryOperations';
 
 (async () => {
   // 抽選情報をlotteryInfo.csvから読み込み
@@ -37,81 +36,18 @@ import { login, registerFavoriteCourt, navigateToLotteryPage, selectLotteryCell,
   const logFilePath = initLogFile(logFileName);
   const log = (message: string) => appendLog(logFilePath, message);
 
-  // 抽出した抽選情報を処理
-  for (const info of filteredInfo) {
-    const lotteryNo = info.lotteryNo;
-    const userName = info.name;
-    const userNumber = info.id;
-    const password = info.password;
-    const courtName = info.courtName;
-    const courtType = info.courtType;
-    const date = info.date;
-    const startHour = info.startHour;
+  // 抽出した抽選情報を1件ずつ処理
+  for (const lotteryInfo of filteredInfo) {
+    const { lotteryNo, userName, userId, courtName, month, date, startHour } = lotteryInfo;
 
     log('')
     log(`=== 処理開始: #${lotteryNo} ===`);
-    log(`利用者: ${userName} (利用者番号: ${userNumber})`)
-    log(`コート名: ${courtName}, 日時: ${info.month}/${date} ${startHour}:00~`)
+    log(`利用者: ${userName} (利用者番号: ${userId})`)
+    log(`コート名: ${courtName}, 日時: ${month}/${date} ${startHour}:00~`)
     log('')
-    console.log(`=== 処理開始: #${lotteryNo} ${userName} (利用者番号: ${userNumber}) ===`);
+    console.log(`=== 処理開始: #${lotteryNo} ${userName} (利用者番号: ${userId}) ===`);
 
-    // ブラウザを起動
-    const browser = await chromium.launch({ headless: false });
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    page.on('dialog', async (dialog: import('playwright').Dialog) => {
-      await dialog.accept();
-    });
-
-    try {
-      // ログイン処理
-      const isSuccessLogin = await login(page, log, userNumber, password);
-      if (!isSuccessLogin) {
-        log(`Warning: ログインに失敗しました. #${lotteryNo}, 氏名: ${userName}, 利用者番号: ${userNumber}`)
-        console.log(`Warning: ログインに失敗しました. #${lotteryNo}, 氏名: ${userName}, 利用者番号: ${userNumber}`)
-        continue;
-      }
-
-      // 抽選申込みページへ遷移
-      await navigateToLotteryPage(page, log);
-
-      // お気に入りコートに未登録なら登録する
-      await page.waitForLoadState('networkidle');
-      const favoriteCourtButton = await page.getByRole('button', { name: courtName }).isVisible();
-      if (!favoriteCourtButton) {
-        // お気に入りコート登録処理
-        await registerFavoriteCourt(page, log, courtName, courtType);
-        // 抽選申込みページへ遷移
-        await navigateToLotteryPage(page, log);
-      }
-
-      // 予約対象のコートを選択
-      await page.getByRole('button', { name: courtName }).click();
-      log(`${courtName}を選択`);
-
-      // 抽選申込みする枠を選択
-      await selectLotteryCell(page, log, date, startHour);
-      await page.getByRole('button', { name: ' 申込み' }).click();
-
-      // 申込みを確定
-      const remainNumber = await confirmLottery(page, log, userName);
-
-      // 2枠目の抽選申込み枠があれば、もう一度申込む
-      if (remainNumber) {
-        await page.getByRole('button', { name: '続けて申込み'}).click();
-
-        // 抽選申込みする枠を選択
-        await selectLotteryCell(page, log, date, startHour);
-        await page.getByRole('button', { name: ' 申込み' }).click();
-
-        // 申込みを確定
-        await confirmLottery(page, log, userName);
-      }
-    } catch (error) {
-      log(`エラーが発生しました: ${error}`);
-      console.error(`エラーが発生しました: `, error);
-    } finally {
-      await browser.close();
-    }
+    // 抽選申込み
+    await lottery(log, lotteryInfo);
   }
 })();
