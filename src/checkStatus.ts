@@ -31,7 +31,6 @@ const maxConcurrency = 10;
   // usersを並行実行数で振り分け
   let usersGroup: User[][] = Array.from({length: maxConcurrency}, () => []);
   users.forEach((user, i) => {
-    if (i>10) return
     const groupIndex = i % maxConcurrency;
     usersGroup[groupIndex].push(user);
   });
@@ -55,12 +54,14 @@ const maxConcurrency = 10;
   const logFilePath = initLogFile('checkStatus_redo.log');
   const log = (message: string) => appendLog(logFilePath, message);
   // ブラウザを操作し確認処理を実行する
-  // await check(errorUsers, usersStatus, log);
+  await check(errorUsers, usersStatus, log);
 
   // 全ユーザーの処理が終了したら一括でCSVに書き出す
+  console.log('output/status.csv に各ユーザーのステータスを出力します');
   await saveUserStatus(usersStatus);
 
   // 抽選申込み数などをjsonに書き出す
+  console.log('output/status_summary.json にサマリを出力します');
   await saveStatusSummary(usersStatus);
 })();
 

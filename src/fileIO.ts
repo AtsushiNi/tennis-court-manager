@@ -200,8 +200,8 @@ export async function saveStatusSummary(usersStatus: UserStatus[]): Promise<void
   });
 
   // outディレクトリがなければ作成
-  if (!fs.existsSync('out')) {
-    fs.mkdirSync('out');
+  if (!fs.existsSync('output')) {
+    fs.mkdirSync('output');
   }
 
   // JSONファイルに出力
@@ -209,5 +209,5 @@ export async function saveStatusSummary(usersStatus: UserStatus[]): Promise<void
     lottery1: lotteryCounts,
     loginFailedCount
   };
-  await fsPromises.writeFile('out/status_summary.json', JSON.stringify(result, null, 2));
+  await fsPromises.writeFile('output/status_summary.json', JSON.stringify(result, null, 2));
 }
