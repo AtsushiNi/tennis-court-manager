@@ -178,3 +178,36 @@ export function appendLog(logFileName: string, message: string): string {
   fs.appendFileSync(logFileName, `${logMessage}\n`);
   return logMessage;
 }
+
+// ユーザーステータスの統計情報をJSONファイルに保存
+export async function saveStatusSummary(usersStatus: UserStatus[]): Promise<void> {
+  const lotteryCounts: Record<string, number> = {};
+  let loginFailedCount = 0;
+
+  usersStatus.forEach(user => {
+    // lottery1の集計
+    if (user.lottery1) {
+      lotteryCounts[user.lottery1] = (lotteryCounts[user.lottery1] || 0) + 1;
+    }
+    // lottery2の集計
+    if (user.lottery2) {
+      lotteryCounts[user.lottery2] = (lotteryCounts[user.lottery2] || 0) + 1;
+    }
+    // ログイン失敗カウント
+    if (user.loginStatus === 'x') {
+      loginFailedCount++;
+    }
+  });
+
+  // outディレクトリがなければ作成
+  if (!fs.existsSync('out')) {
+    fs.mkdirSync('out');
+  }
+
+  // JSONファイルに出力
+  const result = {
+    lottery1: lotteryCounts,
+    loginFailedCount
+  };
+  await fsPromises.writeFile('out/status_summary.json', JSON.stringify(result, null, 2));
+}

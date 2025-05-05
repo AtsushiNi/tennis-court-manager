@@ -1,8 +1,6 @@
 import { chromium } from 'playwright';
-import { readMembers, User, initLogFile, appendLog, saveUserStatus } from "./fileIO";
+import { readMembers, User, initLogFile, appendLog, saveUserStatus, saveStatusSummary } from "./fileIO";
 import { getLotteryStatus, login, logout } from './browserOperations';
-import fs from 'fs';
-import { promises as fsPromises } from 'fs';
 
 export interface UserStatus {
   id: number;
@@ -33,6 +31,7 @@ const maxConcurrency = 10;
   // usersを並行実行数で振り分け
   let usersGroup: User[][] = Array.from({length: maxConcurrency}, () => []);
   users.forEach((user, i) => {
+    if (i>10) return
     const groupIndex = i % maxConcurrency;
     usersGroup[groupIndex].push(user);
   });
@@ -56,11 +55,13 @@ const maxConcurrency = 10;
   const logFilePath = initLogFile('checkStatus_redo.log');
   const log = (message: string) => appendLog(logFilePath, message);
   // ブラウザを操作し確認処理を実行する
-  await check(errorUsers, usersStatus, log);
+  // await check(errorUsers, usersStatus, log);
 
   // 全ユーザーの処理が終了したら一括でCSVに書き出す
   await saveUserStatus(usersStatus);
 
+  // 抽選申込み数などをjsonに書き出す
+  await saveStatusSummary(usersStatus);
 })();
 
 // ブラウザを操作しusersそれぞれについて確認し、usersStatusを更新する
