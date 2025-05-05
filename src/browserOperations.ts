@@ -11,6 +11,8 @@ export async function login(page: Page, log: (msg: string) => void, userNumber: 
   log('予約サイトにアクセスしました');
 
   // ログインボタンをクリック
+  await page.waitForLoadState('networkidle', { timeout: 60000 }),
+  await page.waitForSelector('#loadmsg', { state: 'hidden', timeout: 30000 }),
   await page.getByRole('button', { name: ' ログイン' }).click();
   log('ログインボタンをクリック');
 
@@ -27,13 +29,30 @@ export async function login(page: Page, log: (msg: string) => void, userNumber: 
   log('ログインを実行');
 
   // ログイン成功可否を確認
-  await page.waitForLoadState('networkidle');
+  await Promise.race([
+    page.waitForLoadState('networkidle', { timeout: 60000 }),
+    page.waitForLoadState('domcontentloaded', { timeout: 60000 })
+  ]);
   const newsDisplay = await page.getByLabel('お知らせ');
   if (await newsDisplay.count()) {
     return true;
   } else {
     return false;
   }
+}
+
+// システムからログアウトする
+export async function logout(page: Page, log: (msg: string) => void): Promise<void> {
+  log('ログアウトを実行');
+  await page.waitForSelector('#loadmsg', { state: 'hidden', timeout: 30000 }),
+  await page.getByRole('link', { name: ' マイメニュー' }).click();
+  await page.getByRole('link', { name: 'ログアウト' }).click();
+  
+  // ログアウト完了を待機
+  await Promise.race([
+    page.waitForLoadState('networkidle', { timeout: 60000 }),
+    page.waitForLoadState('domcontentloaded', { timeout: 60000 })
+  ]);
 }
 
 // お気に入りコートを登録する
@@ -181,4 +200,31 @@ export async function confirmLottery(page: Page, log: (msg: string) => void, use
   await page.getByRole('button', { name: ' 申込み' }).click();
 
   return remainNumber;
+}
+
+// 抽選申込み状況を取得する
+export async function getLotteryStatus(page: Page): Promise<string[]> {
+  // 抽選申込みの確認ページへ遷移
+  await page.waitForSelector('#loadmsg', { state: 'hidden', timeout: 30000 });
+  await page.getByRole('link', { name: '抽選 ⏷' }).click();
+  await page.getByRole('link', { name: '抽選申込みの確認' }).click();
+  await Promise.race([
+    page.waitForLoadState('networkidle', { timeout: 60000 }),
+    page.waitForLoadState('domcontentloaded', { timeout: 60000 })
+  ]);
+
+  // テーブルから抽選申込み情報を取得
+  const lotteryTable = page.locator('#lottery-application table');
+  const rows = await lotteryTable.locator('tbody tr').all();
+  
+  const lotteryStatus: string[] = [];
+  for (let i = 0; i < Math.min(rows.length, 2); i++) {
+    const row = rows[i];
+    const courtName = await row.locator('td:nth-child(4) span:nth-child(2)').innerText();
+    const date = (await row.locator('td:nth-child(5) span:nth-child(2)').innerText()).replace(/\n/g, '');
+    const hour = (await row.locator('td:nth-child(6)').innerText()).replace('時刻：', '').replace(/\n/g, '');
+    lotteryStatus.push(`${courtName} ${date} ${hour}`);
+  }
+
+  return lotteryStatus;
 }

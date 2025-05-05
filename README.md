@@ -52,3 +52,11 @@ npm install
     1. `lotteryInfo.csv`を修正
     2. `npm run lottery-by-range`を実行
     3. 実行したい`lotteryNo`の範囲を入力
+
+#### (参考)状況確認
+- 使用ケース
+    - ログインできないユーザーを見つけたい
+    - 正しく抽選予約できているか確認したい
+- 実行方法
+    1. `npm run check-status`を実行
+    1. `status.csv`を確認

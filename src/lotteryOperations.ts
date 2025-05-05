@@ -1,4 +1,3 @@
-
 import { chromium } from 'playwright';
 import { LotteryInfo } from "./fileIO";
 import { login, navigateToLotteryPage, registerFavoriteCourt, selectLotteryCell, confirmLottery } from './browserOperations';
@@ -7,9 +6,9 @@ import { login, navigateToLotteryPage, registerFavoriteCourt, selectLotteryCell,
 export async function lottery(log: (msg: string) => string, lotteryInfo: LotteryInfo) {
   const { lotteryNo, userName, userId: userNumber, password, courtType, courtName, month, date, startHour } = lotteryInfo;
 
-  // ブラウザを起動
   let browser;
   try {
+    // ブラウザを起動
     browser = await chromium.launch({ headless: false });
     const context = await browser.newContext();
     const page = await context.newPage();

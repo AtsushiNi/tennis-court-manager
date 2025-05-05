@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "lottery-all": "ts-node src/lotteryAll.ts",
-    "lottery-by-range": "ts-node src/lotteryByRange"
+    "lottery-by-range": "ts-node src/lotteryByRange.ts",
+    "check-status": "ts-node src/checkStatus.ts"
   },
   "author": "",
   "license": "ISC",

@@ -1,5 +1,7 @@
 import fs from 'fs';
+import { promises as fsPromises } from 'fs';
 import csv from 'csv-parser';
+import { UserStatus } from './checkStatus';
 
 const logDir = 'logs';
 
@@ -23,7 +25,7 @@ interface LotteryInfoRow {
   開始時間: string;
 }
 
-interface User {
+export interface User {
   id: number;
   password: string;
   name: string;
@@ -139,6 +141,26 @@ export async function readLotteryInfo(): Promise<LotteryInfo[]> {
       .on('error', reject);
   });
   return results;
+}
+
+export async function saveUserStatus(usersStatus: UserStatus[]): Promise<void> {
+  const statusFile = 'output/status.csv';
+  
+  // 出力ディレクトリ作成
+  fs.mkdirSync('output', { recursive: true });
+  // 空ファイルを作成
+  fs.writeFileSync(statusFile, '');
+
+  // ヘッダー行
+  let csvContent = 'ID,名前,パスワード,ログイン,抽選申込み1,抽選申込み2\n';
+  
+  // 全ユーザーのデータを構築
+  for (const user of usersStatus) {
+    csvContent += `${user.id},${user.name},${user.password},${user.loginStatus},${user.lottery1},${user.lottery2}\n`;
+  }
+  
+  // 一気にファイルに書き込む
+  await fsPromises.writeFile(statusFile, csvContent);
 }
 
 // ログファイルを初期化
