@@ -24,7 +24,12 @@
 ## 使い方
 ### 0. 準備
 #### 1. Git, Nodeのインストール
+
 #### 2. 本プロジェクトをクローン
+```
+git clone git@github.com:AtsushiNi/tennis-court-manager.git
+```
+
 #### 3. 依存ライブラリのインストール
 ```
 npm install
