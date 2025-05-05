@@ -59,4 +59,4 @@ npm install
     - 正しく抽選予約できているか確認したい
 - 実行方法
     1. `npm run check-status`を実行
-    1. `status.csv`を確認
+    1. `output/status.csv`, `output/status_summary.json`を確認
