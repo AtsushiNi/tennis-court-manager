@@ -27,7 +27,7 @@
 
 #### 2. 本プロジェクトをクローン
 ```
-git clone git@github.com:AtsushiNi/tennis-court-manager.git
+git clone https://github.com/AtsushiNi/tennis-court-manager.git
 ```
 
 #### 3. 依存ライブラリのインストール
