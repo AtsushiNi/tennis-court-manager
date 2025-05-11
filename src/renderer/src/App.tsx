@@ -19,7 +19,7 @@ function App(): React.JSX.Element {
         />
         <Menu theme="dark" mode="inline" defaultSelectedKeys={['1']}>
           <Menu.Item key="1" icon={<UserOutlined />}>
-            メンバー一覧
+            カード一覧
           </Menu.Item>
         </Menu>
       </Sider>
