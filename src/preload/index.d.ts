@@ -1,4 +1,5 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
+import { LotteryTarget } from 'src/common/types'
 
 declare global {
   interface Window {
@@ -11,7 +12,7 @@ declare global {
       deleteProfile: (profileId: string) => Promise<boolean>
       submitLotteryApplication: (
         profileId: string,
-        data: LotteryApplicationData
+        lotteryTargets: LotteryTarget[]
       ) => Promise<{ success: boolean; message?: string }>
       getApplicationStatus: (profileId: string) => Promise<ApplicationStatus[]>
       cancelApplication: (profileId: string, applicationKey: string) => Promise<boolean>

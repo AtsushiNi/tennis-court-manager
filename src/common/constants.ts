@@ -36,3 +36,5 @@ export const COURTS: Court[] = [
   { name: '大井ふ頭海浜公園Ｂ', type: 'テニス（人工芝）' },
   { name: '有明テニスＣ人工芝コート', type: 'テニス（人工芝）' },
 ];
+
+export const VALID_COURT_TYPES = ['テニス（人工芝）', 'テニス（ハード）'] as const;

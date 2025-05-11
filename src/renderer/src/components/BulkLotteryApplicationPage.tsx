@@ -5,20 +5,11 @@ import 'dayjs/locale/ja'
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons'
 
 dayjs.locale('ja')
-import type { Dayjs } from 'dayjs'
-import { Profile } from '../../../common/types'
+import { LotteryTarget, Profile } from '../../../common/types'
 import { COURTS } from '../../../common/constants'
 
-interface LotteryCondition {
-  court: string
-  date: Dayjs
-  startHour: number
-}
-
 interface LotteryApplicationValues {
-  name: string
-  memberId: string
-  lotteryConditions: LotteryCondition[]
+  lotteryTargets: LotteryTarget[]
 }
 
 interface BulkLotteryApplicationPageProps {
@@ -38,7 +29,7 @@ const BulkLotteryApplicationPage = ({
       return
     }
     try {
-      await window.api.submitLotteryApplication(profile.id, values)
+      await window.api.submitLotteryApplication(profile.id, values.lotteryTargets)
     } catch (err) {
       console.error('一括抽選申込みエラー:', err)
       messageApi.error(err instanceof Error ? err.message : '一括抽選申込みに失敗しました')
@@ -51,7 +42,7 @@ const BulkLotteryApplicationPage = ({
       <div>
         <h1 style={{ marginBottom: '20px' }}>一括抽選申込み</h1>
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          <Form.List name="lotteryConditions">
+          <Form.List name="lotteryTargets">
             {(fields, { add, remove }) => (
               <>
                 {fields.map(({ key, name, ...restField }) => (

@@ -1,4 +1,5 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { setupLotteryHandlers } from './lottery'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -143,6 +144,9 @@ app.whenReady().then(async () => {
       return false
     }
   })
+
+  // 抽選ハンドラをセットアップ
+  setupLotteryHandlers()
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
