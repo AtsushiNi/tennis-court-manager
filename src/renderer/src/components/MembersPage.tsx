@@ -2,7 +2,7 @@ import { Table, Button, Space, message, Modal, Form, Input } from 'antd'
 import { useState, useEffect } from 'react'
 import type { ColumnsType } from 'antd/es/table'
 import * as XLSX from 'xlsx'
-import { Member, Profile } from '../../../types'
+import { Member, Profile } from '../../../common/types'
 
 interface MembersPageProps {
   profile: Profile | null

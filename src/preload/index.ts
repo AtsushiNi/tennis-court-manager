@@ -1,14 +1,20 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import { Member, Profile, AppAPI } from '../types'
+import { Member, Profile, LotteryApplicationData } from '../common/types'
 
 // Custom APIs for renderer
-const api: AppAPI = {
+const api = {
   loadMembers: (profileId: string) => ipcRenderer.invoke('load-members', profileId),
   saveMembers: (profileId: string, members: Member[]) => ipcRenderer.invoke('save-members', profileId, members),
   loadProfiles: () => ipcRenderer.invoke('load-profiles'),
   saveProfiles: (profiles: Profile[]) => ipcRenderer.invoke('save-profiles', profiles),
-  deleteProfile: (profileId: string) => ipcRenderer.invoke('delete-profile', profileId)
+  deleteProfile: (profileId: string) => ipcRenderer.invoke('delete-profile', profileId),
+  submitLotteryApplication: (profileId: string, data: LotteryApplicationData) => 
+    ipcRenderer.invoke('submit-lottery-application', profileId, data),
+  getApplicationStatus: (profileId: string) => 
+    ipcRenderer.invoke('get-application-status', profileId),
+  cancelApplication: (profileId: string, applicationKey: string) => 
+    ipcRenderer.invoke('cancel-application', profileId, applicationKey)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

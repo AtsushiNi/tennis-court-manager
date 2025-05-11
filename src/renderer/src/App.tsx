@@ -8,14 +8,20 @@ import {
   DeleteOutlined
 } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
-import type { Profile } from '../../types'
+import type { Profile } from '../../common/types'
 import MembersPage from './components/MembersPage'
+import BulkLotteryApplicationPage from './components/BulkLotteryApplicationPage'
+import IndividualLotteryApplicationPage from './components/IndividualLotteryApplicationPage'
+import StatusCheckPage from './components/StatusCheckPage'
 
 const { Sider, Content } = Layout
 
 function AppComponent(): React.JSX.Element {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null)
+  const [currentPage, setCurrentPage] = useState<
+    'members' | 'bulk-lottery' | 'individual-lottery' | 'status'
+  >('members')
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [deletingProfileId, setDeletingProfileId] = useState<string | null>(null)
@@ -141,15 +147,37 @@ function AppComponent(): React.JSX.Element {
             </Button>
           </Dropdown>
         </div>
-        <Menu theme="dark" mode="inline" defaultSelectedKeys={['1']} style={{ padding: 8 }}>
-          <Menu.Item key="1" icon={<UserOutlined />}>
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[currentPage]}
+          style={{ padding: 8 }}
+          onSelect={({ key }) =>
+            setCurrentPage(key as 'members' | 'bulk-lottery' | 'individual-lottery' | 'status')
+          }
+        >
+          <Menu.Item key="members" icon={<UserOutlined />}>
             カード一覧
+          </Menu.Item>
+          <Menu.SubMenu key="lottery" icon={<PlusOutlined />} title="抽選申込み">
+            <Menu.Item key="bulk-lottery">一括申込み</Menu.Item>
+            <Menu.Item key="individual-lottery">個別申込み</Menu.Item>
+          </Menu.SubMenu>
+          <Menu.Item key="status" icon={<TeamOutlined />}>
+            状況確認
           </Menu.Item>
         </Menu>
       </Sider>
       <Layout>
         <Content style={{ margin: '16px' }}>
-          <MembersPage profile={currentProfile} />
+          {currentPage === 'members' && <MembersPage profile={currentProfile} />}
+          {currentPage === 'bulk-lottery' && (
+            <BulkLotteryApplicationPage profile={currentProfile} />
+          )}
+          {currentPage === 'individual-lottery' && (
+            <IndividualLotteryApplicationPage profile={currentProfile} />
+          )}
+          {currentPage === 'status' && <StatusCheckPage profile={currentProfile} />}
         </Content>
       </Layout>
       <Modal
