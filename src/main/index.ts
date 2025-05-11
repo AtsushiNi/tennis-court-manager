@@ -5,7 +5,20 @@ import icon from '../../resources/icon.png?asset'
 import fs from 'fs/promises'
 import path from 'path'
 
-const MEMBERS_FILE = path.join(app.getPath('userData'), 'members.json')
+const PROFILES_FILE = path.join(app.getPath('userData'), 'profiles.json')
+
+async function ensureDefaultProfile(): Promise<void> {
+  try {
+    await fs.access(PROFILES_FILE)
+  } catch {
+    // ファイルが存在しない場合はデフォルトプロファイルを作成
+    const defaultProfile = {
+      id: 'default',
+      name: 'デフォルト'
+    }
+    await fs.writeFile(PROFILES_FILE, JSON.stringify([defaultProfile], null, 2))
+  }
+}
 
 function createWindow(): void {
   // Create the browser window.
@@ -42,7 +55,8 @@ function createWindow(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await ensureDefaultProfile()
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
@@ -54,25 +68,78 @@ app.whenReady().then(() => {
   })
 
   // IPC handlers
-  ipcMain.handle('load-members', async () => {
+  ipcMain.handle('load-profiles', async () => {
     try {
-      const data = await fs.readFile(MEMBERS_FILE, 'utf-8')
+      const data = await fs.readFile(PROFILES_FILE, 'utf-8')
       return JSON.parse(data)
     } catch (err: unknown) {
-      if (err instanceof Error && 'code' in err && err.code === 'ENOENT') {
-        return []
-      }
-      console.error('Failed to load members:', err instanceof Error ? err.message : String(err))
+      console.error('Failed to load profiles:', err instanceof Error ? err.message : String(err))
       return []
     }
   })
 
-  ipcMain.handle('save-members', async (_, members: unknown) => {
+  ipcMain.handle('save-profiles', async (_, profiles: unknown) => {
     try {
-      await fs.writeFile(MEMBERS_FILE, JSON.stringify(members, null, 2))
+      await fs.writeFile(PROFILES_FILE, JSON.stringify(profiles, null, 2))
+      return true
+    } catch (err: unknown) {
+      console.error('Failed to save profiles:', err instanceof Error ? err.message : String(err))
+      return false
+    }
+  })
+
+  ipcMain.handle('load-members', async (_, profileId: string) => {
+    const membersFile = path.join(app.getPath('userData'), `profile_${profileId}.json`)
+    const fileExists = await fs
+      .access(membersFile)
+      .then(() => true)
+      .catch(() => false)
+
+    if (fileExists) {
+      const data = await fs.readFile(membersFile, 'utf-8')
+      return JSON.parse(data)
+    } else {
+      // ファイルが存在しない場合は空の配列でファイルを作成
+      await fs.writeFile(membersFile, JSON.stringify([], null, 2))
+      return []
+    }
+  })
+
+  ipcMain.handle('save-members', async (_, profileId: string, members: unknown) => {
+    const membersFile = path.join(app.getPath('userData'), `profile_${profileId}.json`)
+    try {
+      await fs.writeFile(membersFile, JSON.stringify(members, null, 2))
       return true
     } catch (err: unknown) {
       console.error('Failed to save members:', err instanceof Error ? err.message : String(err))
+      return false
+    }
+  })
+
+  ipcMain.handle('delete-profile', async (_, profileId: string) => {
+    try {
+      // プロファイルデータを読み込み
+      const profilesData = await fs.readFile(PROFILES_FILE, 'utf-8')
+      const profiles = JSON.parse(profilesData)
+
+      // 指定プロファイルを除外
+      const updatedProfiles = profiles.filter((p: { id: string }) => p.id !== profileId)
+
+      // プロファイルリストを更新
+      await fs.writeFile(PROFILES_FILE, JSON.stringify(updatedProfiles, null, 2))
+
+      // 関連メンバーデータファイルを削除
+      const membersFile = path.join(app.getPath('userData'), `profile_${profileId}.json`)
+      try {
+        await fs.unlink(membersFile)
+      } catch (err: unknown) {
+        // メンバーファイルが存在しない場合は無視
+        if (err instanceof Error && 'code' in err && err.code !== 'ENOENT') throw err
+      }
+
+      return true
+    } catch (err: unknown) {
+      console.error('Failed to delete profile:', err instanceof Error ? err.message : String(err))
       return false
     }
   })

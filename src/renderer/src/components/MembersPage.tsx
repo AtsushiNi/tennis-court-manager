@@ -2,20 +2,26 @@ import { Table, Button, Space, message, Modal, Form, Input } from 'antd'
 import { useState, useEffect } from 'react'
 import type { ColumnsType } from 'antd/es/table'
 import * as XLSX from 'xlsx'
-import { Member } from '../../../types'
+import { Member, Profile } from '../../../types'
 
-const MembersPage = (): React.JSX.Element => {
+interface MembersPageProps {
+  profile: Profile | null
+}
+
+const MembersPage = ({ profile }: MembersPageProps): React.JSX.Element => {
   const [members, setMembers] = useState<Member[]>([])
   const [editingMember, setEditingMember] = useState<Member | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [form] = Form.useForm()
   const [messageApi, contextHolder] = message.useMessage()
 
-  // メンバーデータの読み込み
+  // プロファイル変更時にメンバーデータを読み込み
   useEffect(() => {
+    if (!profile) return
+
     const loadMembers = async (): Promise<void> => {
       try {
-        const loadedMembers = await window.api.loadMembers()
+        const loadedMembers = await window.api.loadMembers(profile.id)
         setMembers(loadedMembers)
       } catch (err) {
         console.error('Failed to load members:', err)
@@ -23,25 +29,31 @@ const MembersPage = (): React.JSX.Element => {
       }
     }
     loadMembers()
-  }, [])
+  }, [profile])
 
-  // メンバーデータの保存
+  // members変更時に自動保存
   useEffect(() => {
-    if (members.length === 0) return // 初期読み込み時は保存しない
-
-    const saveMembers = async (): Promise<void> => {
-      try {
-        const success = await window.api.saveMembers(members)
-        if (!success) {
-          throw new Error('Save failed')
-        }
-      } catch (err) {
-        console.error('Failed to save members:', err)
-        messageApi.error('メンバーデータの保存に失敗しました')
-      }
-    }
-    saveMembers()
+    if (!profile) return
+    handleSave()
   }, [members])
+
+  // メンバーデータ保存処理
+  const handleSave = async (): Promise<void> => {
+    if (!profile) {
+      messageApi.warning('保存するメンバーデータがありません')
+      return
+    }
+
+    try {
+      const success = await window.api.saveMembers(profile.id, members)
+      if (!success) {
+        throw new Error('Save failed')
+      }
+    } catch (err) {
+      console.error('Failed to save members:', err)
+      messageApi.error('メンバーデータの保存に失敗しました')
+    }
+  }
 
   // メンバー削除処理
   const handleDelete = (key: string): void => {

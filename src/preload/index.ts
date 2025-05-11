@@ -1,10 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import { Member, Profile, AppAPI } from '../types'
 
 // Custom APIs for renderer
-const api = {
-  loadMembers: () => ipcRenderer.invoke('load-members'),
-  saveMembers: (members) => ipcRenderer.invoke('save-members', members)
+const api: AppAPI = {
+  loadMembers: (profileId: string) => ipcRenderer.invoke('load-members', profileId),
+  saveMembers: (profileId: string, members: Member[]) => ipcRenderer.invoke('save-members', profileId, members),
+  loadProfiles: () => ipcRenderer.invoke('load-profiles'),
+  saveProfiles: (profiles: Profile[]) => ipcRenderer.invoke('save-profiles', profiles),
+  deleteProfile: (profileId: string) => ipcRenderer.invoke('delete-profile', profileId)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

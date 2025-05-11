@@ -5,7 +5,15 @@ export interface Member {
   password: string
 }
 
+export interface Profile {
+  id: string
+  name: string
+}
+
 export interface AppAPI {
-  loadMembers: () => Promise<Member[]>
-  saveMembers: (members: Member[]) => Promise<boolean>
+  loadMembers: (profileId: string) => Promise<Member[]>
+  saveMembers: (profileId: string, members: Member[]) => Promise<boolean>
+  loadProfiles: () => Promise<Profile[]>
+  saveProfiles: (profiles: Profile[]) => Promise<boolean>
+  deleteProfile: (profileId: string) => Promise<boolean>
 }
