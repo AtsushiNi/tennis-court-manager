@@ -1,11 +1,11 @@
 import 'antd/dist/reset.css'
-import { Layout, Menu } from 'antd'
+import { Layout, Menu, App } from 'antd'
 import { UserOutlined } from '@ant-design/icons'
 import MembersPage from './components/MembersPage'
 
 const { Sider, Content } = Layout
 
-function App(): React.JSX.Element {
+function AppComponent(): React.JSX.Element {
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider collapsible>
@@ -32,4 +32,10 @@ function App(): React.JSX.Element {
   )
 }
 
-export default App
+export default function AppWrapper(): React.JSX.Element {
+  return (
+    <App>
+      <AppComponent />
+    </App>
+  )
+}
