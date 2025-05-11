@@ -2,6 +2,10 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import fs from 'fs/promises'
+import path from 'path'
+
+const MEMBERS_FILE = path.join(app.getPath('userData'), 'members.json')
 
 function createWindow(): void {
   // Create the browser window.
@@ -47,6 +51,30 @@ app.whenReady().then(() => {
   // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
+  })
+
+  // IPC handlers
+  ipcMain.handle('load-members', async () => {
+    try {
+      const data = await fs.readFile(MEMBERS_FILE, 'utf-8')
+      return JSON.parse(data)
+    } catch (err: unknown) {
+      if (err instanceof Error && 'code' in err && err.code === 'ENOENT') {
+        return []
+      }
+      console.error('Failed to load members:', err instanceof Error ? err.message : String(err))
+      return []
+    }
+  })
+
+  ipcMain.handle('save-members', async (_, members: unknown) => {
+    try {
+      await fs.writeFile(MEMBERS_FILE, JSON.stringify(members, null, 2))
+      return true
+    } catch (err: unknown) {
+      console.error('Failed to save members:', err instanceof Error ? err.message : String(err))
+      return false
+    }
   })
 
   // IPC test

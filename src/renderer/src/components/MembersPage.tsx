@@ -1,14 +1,8 @@
 import { Table, Button, Space, message, Modal, Form, Input } from 'antd'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { ColumnsType } from 'antd/es/table'
 import * as XLSX from 'xlsx'
-
-interface Member {
-  key: string
-  name: string
-  id: string
-  password: string
-}
+import { Member } from '../../../types'
 
 const MembersPage = (): React.JSX.Element => {
   const [members, setMembers] = useState<Member[]>([])
@@ -16,6 +10,38 @@ const MembersPage = (): React.JSX.Element => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [form] = Form.useForm()
   const [messageApi, contextHolder] = message.useMessage()
+
+  // メンバーデータの読み込み
+  useEffect(() => {
+    const loadMembers = async (): Promise<void> => {
+      try {
+        const loadedMembers = await window.api.loadMembers()
+        setMembers(loadedMembers)
+      } catch (err) {
+        console.error('Failed to load members:', err)
+        messageApi.error('メンバーデータの読み込みに失敗しました')
+      }
+    }
+    loadMembers()
+  }, [])
+
+  // メンバーデータの保存
+  useEffect(() => {
+    if (members.length === 0) return // 初期読み込み時は保存しない
+
+    const saveMembers = async (): Promise<void> => {
+      try {
+        const success = await window.api.saveMembers(members)
+        if (!success) {
+          throw new Error('Save failed')
+        }
+      } catch (err) {
+        console.error('Failed to save members:', err)
+        messageApi.error('メンバーデータの保存に失敗しました')
+      }
+    }
+    saveMembers()
+  }, [members])
 
   // メンバー削除処理
   const handleDelete = (key: string): void => {
