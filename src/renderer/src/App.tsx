@@ -1,32 +1,34 @@
-import Versions from './components/Versions'
+import 'antd/dist/reset.css'
+import { Layout, Menu } from 'antd'
+import { UserOutlined } from '@ant-design/icons'
+import MembersPage from './components/MembersPage'
+
+const { Sider, Content } = Layout
 
 function App(): React.JSX.Element {
-  const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
-
   return (
-    <>
-      <div className="creator">Powered by electron-vite</div>
-      <div className="text">
-        Build an Electron app with <span className="react">React</span>
-        &nbsp;and <span className="ts">TypeScript</span>
-      </div>
-      <p className="tip">
-        Please try pressing <code>F12</code> to open the devTool
-      </p>
-      <div className="actions">
-        <div className="action">
-          <a href="https://electron-vite.org/" target="_blank" rel="noreferrer">
-            Documentation
-          </a>
-        </div>
-        <div className="action">
-          <a target="_blank" rel="noreferrer" onClick={ipcHandle}>
-            Send IPC
-          </a>
-        </div>
-      </div>
-      <Versions></Versions>
-    </>
+    <Layout style={{ minHeight: '100vh' }}>
+      <Sider collapsible>
+        <div
+          className="logo"
+          style={{
+            height: '32px',
+            margin: '16px',
+            background: 'rgba(255, 255, 255, 0.2)'
+          }}
+        />
+        <Menu theme="dark" mode="inline" defaultSelectedKeys={['1']}>
+          <Menu.Item key="1" icon={<UserOutlined />}>
+            メンバー一覧
+          </Menu.Item>
+        </Menu>
+      </Sider>
+      <Layout>
+        <Content style={{ margin: '16px' }}>
+          <MembersPage />
+        </Content>
+      </Layout>
+    </Layout>
   )
 }
 
