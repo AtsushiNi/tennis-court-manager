@@ -61,6 +61,18 @@ const MembersPage = (): React.JSX.Element => {
     form
       .validateFields()
       .then((values) => {
+        // 登録番号の重複チェック
+        const isDuplicate = members.some(
+          // 編集時に登録番号をそのままにしても重複と判定させない
+          (member) =>
+            member.id === values.id && (!editingMember || member.key !== editingMember.key)
+        )
+
+        if (isDuplicate) {
+          messageApi.error('この登録番号は既に使用されています')
+          return
+        }
+
         if (editingMember) {
           // 編集処理
           setMembers(
@@ -161,28 +173,30 @@ const MembersPage = (): React.JSX.Element => {
       {contextHolder}
       <div>
         <h1 style={{ marginBottom: '20px' }}>カード一覧</h1>
-        <Space style={{ marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
           <Button type="primary" onClick={() => setIsModalOpen(true)}>
             メンバー追加
           </Button>
-          <Button type="primary" onClick={exportToExcel}>
-            Excelエクスポート
-          </Button>
-          <input
-            type="file"
-            accept=".xlsx,.xls"
-            onChange={(e) => {
-              if (e.target.files?.[0]) {
-                importFromExcel(e.target.files[0])
-              }
-            }}
-            style={{ display: 'none' }}
-            id="excel-upload"
-          />
-          <Button onClick={() => document.getElementById('excel-upload')?.click()}>
-            Excelインポート
-          </Button>
-        </Space>
+          <Space>
+            <Button type="default" onClick={exportToExcel}>
+              Excelエクスポート
+            </Button>
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={(e) => {
+                if (e.target.files?.[0]) {
+                  importFromExcel(e.target.files[0])
+                }
+              }}
+              style={{ display: 'none' }}
+              id="excel-upload"
+            />
+            <Button type="default" onClick={() => document.getElementById('excel-upload')?.click()}>
+              Excelインポート
+            </Button>
+          </Space>
+        </div>
         <Modal
           title={editingMember ? 'メンバー編集' : 'メンバー追加'}
           open={isModalOpen}
@@ -194,6 +208,7 @@ const MembersPage = (): React.JSX.Element => {
               name="name"
               label="氏名"
               rules={[{ required: true, message: '氏名を入力してください' }]}
+              extra="システムに登録している氏名と一致している必要はない。分かればOK"
             >
               <Input />
             </Form.Item>
