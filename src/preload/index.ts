@@ -15,7 +15,9 @@ const api = {
   getApplicationStatus: (profileId: string) =>
     ipcRenderer.invoke('get-application-status', profileId),
   cancelApplication: (profileId: string, applicationKey: string) =>
-    ipcRenderer.invoke('cancel-application', profileId, applicationKey)
+    ipcRenderer.invoke('cancel-application', profileId, applicationKey),
+  confirmLotteryResult: (profileId: string) =>
+    ipcRenderer.invoke('confirm-lottery-result', profileId)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

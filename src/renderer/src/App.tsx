@@ -5,7 +5,8 @@ import {
   PlusOutlined,
   TeamOutlined,
   DownOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  CheckCircleOutlined
 } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
 import type { Profile } from '../../common/types'
@@ -13,6 +14,7 @@ import MembersPage from './components/MembersPage'
 import BulkLotteryApplicationPage from './components/BulkLotteryApplicationPage'
 import IndividualLotteryApplicationPage from './components/IndividualLotteryApplicationPage'
 import StatusCheckPage from './components/StatusCheckPage'
+import LotteryResultPage from './components/LotteryResultPage'
 
 const { Sider, Content } = Layout
 
@@ -20,7 +22,7 @@ function AppComponent(): React.JSX.Element {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null)
   const [currentPage, setCurrentPage] = useState<
-    'members' | 'bulk-lottery' | 'individual-lottery' | 'status'
+    'members' | 'bulk-lottery' | 'individual-lottery' | 'status' | 'result'
   >('members')
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -153,7 +155,7 @@ function AppComponent(): React.JSX.Element {
           selectedKeys={[currentPage]}
           style={{ padding: 8 }}
           onSelect={({ key }) =>
-            setCurrentPage(key as 'members' | 'bulk-lottery' | 'individual-lottery' | 'status')
+            setCurrentPage(key as 'members' | 'bulk-lottery' | 'individual-lottery' | 'status' | 'result')
           }
         >
           <Menu.Item key="members" icon={<UserOutlined />}>
@@ -165,6 +167,9 @@ function AppComponent(): React.JSX.Element {
           </Menu.SubMenu>
           <Menu.Item key="status" icon={<TeamOutlined />}>
             状況確認
+          </Menu.Item>
+          <Menu.Item key="result" icon={<CheckCircleOutlined />}>
+            抽選結果確定
           </Menu.Item>
         </Menu>
       </Sider>
@@ -178,6 +183,7 @@ function AppComponent(): React.JSX.Element {
             <IndividualLotteryApplicationPage profile={currentProfile} />
           )}
           {currentPage === 'status' && <StatusCheckPage profile={currentProfile} />}
+          {currentPage === 'result' && <LotteryResultPage profile={currentProfile} />}
         </Content>
       </Layout>
       <Modal

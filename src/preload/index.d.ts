@@ -15,7 +15,8 @@ declare global {
         lotteryTargets: LotteryTarget[]
       ) => Promise<{ success: boolean; message?: string }>
       getApplicationStatus: (profileId: string) => Promise<ApplicationStatus[]>
-      cancelApplication: (profileId: string, applicationKey: string) => Promise<boolean>
+      cancelApplication: (profileId: string, applicationKey: string) => Promise<boolean>,
+      confirmLotteryResult: (profileId: string) => Promise<boolean>
     }
   }
 }

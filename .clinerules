@@ -1,0 +1,5 @@
+## Playwright MCPサーバーの使い方
+- ツールを使用しないときはこの章を無視すること
+- ツールを使用する度、結果に"Ran Playwright code:"が含まれる場合はその内容を`playwright-operation.log`に追記して
+- `playwright-operation.log`が存在しない場合は作成して
+- 上記は、次の操作を実行・タスクを終了する前に必ず行うこと

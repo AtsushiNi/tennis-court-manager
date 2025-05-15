@@ -1,4 +1,4 @@
-import { Table, Button, Space, message, Modal, Form, Input } from 'antd'
+import { Table, Button, Space, message, Modal, Form, Input, Dropdown } from 'antd'
 import { useState, useEffect } from 'react'
 import type { ColumnsType } from 'antd/es/table'
 import * as XLSX from 'xlsx'
@@ -111,31 +111,83 @@ const MembersPage = ({ profile }: MembersPageProps): React.JSX.Element => {
       })
   }
 
-  // Excelエクスポート
-  const exportToExcel = (): void => {
-    const renamedMembers = members.map((member) => ({
-      氏名: member.name,
-      登録番号: member.id,
-      パスワード: member.password
-    }))
-    const ws = XLSX.utils.json_to_sheet(renamedMembers)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'カード一覧')
+  // エクスポート処理
+  const handleExport = async (format: 'xlsx' | 'csv'): Promise<void> => {
+    if (!profile) {
+      messageApi.warning('プロファイルが選択されていません')
+      return
+    }
 
-    const now = new Date()
-    const timestamp = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`
-    XLSX.writeFile(wb, `cards_${timestamp}.xlsx`)
-    messageApi.success('Excelファイルをエクスポートしました')
+    try {
+      const renamedMembers = members.map((member) => ({
+        氏名: member.name,
+        登録番号: member.id,
+        パスワード: member.password
+      }))
+
+      const now = new Date()
+      const timestamp = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`
+      const fileName = `members_${profile.name}_${timestamp}.${format}`
+
+      if (format === 'csv') {
+        const csvContent = [
+          Object.keys(renamedMembers[0]).join(','),
+          ...renamedMembers.map(member => Object.values(member).join(','))
+        ].join('\n')
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = fileName
+        link.click()
+        URL.revokeObjectURL(url)
+      } else {
+        const ws = XLSX.utils.json_to_sheet(renamedMembers)
+        const wb = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(wb, ws, 'メンバー一覧')
+        XLSX.writeFile(wb, fileName)
+      }
+
+      messageApi.success(`${format === 'csv' ? 'CSV' : 'Excel'}ファイルをエクスポートしました`)
+    } catch (err) {
+      console.error('Export failed:', err)
+      messageApi.error('エクスポート処理中にエラーが発生しました')
+    }
   }
 
-  // Excelインポート
-  const importFromExcel = (file: File): void => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const data = e.target?.result
-      const workbook = XLSX.read(data, { type: 'array' })
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
-      const jsonData = XLSX.utils.sheet_to_json<Record<string, string>>(firstSheet)
+  // インポート処理
+  const importFromFile = async (file: File): Promise<void> => {
+    if (!profile) {
+      messageApi.warning('プロファイルが選択されていません')
+      return
+    }
+
+    try {
+      let jsonData: Array<Record<string, string>>
+      
+      if (file.name.endsWith('.csv')) {
+        const text = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = (e) => resolve(e.target?.result as string)
+          reader.onerror = reject
+          reader.readAsText(file)
+        })
+        const workbook = XLSX.read(text, { type: 'string' })
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
+        jsonData = XLSX.utils.sheet_to_json<Record<string, string>>(firstSheet)
+      } else {
+        const data = await new Promise<ArrayBuffer>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = (e) => resolve(e.target?.result as ArrayBuffer)
+          reader.onerror = reject
+          reader.readAsArrayBuffer(file)
+        })
+        const workbook = XLSX.read(data, { type: 'array' })
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
+        jsonData = XLSX.utils.sheet_to_json<Record<string, string>>(firstSheet)
+      }
+
       const formattedData = jsonData.map((item, index) => ({
         name: item['氏名'],
         id: Number(item['登録番号']),
@@ -143,12 +195,26 @@ const MembersPage = ({ profile }: MembersPageProps): React.JSX.Element => {
         key: String(index + 1),
         ...item
       }))
-      console.log(formattedData)
       setMembers(formattedData)
       messageApi.success(`${jsonData.length}件のデータをインポートしました`)
+    } catch (err) {
+      console.error('Import failed:', err)
+      messageApi.error('ファイルのインポートに失敗しました')
     }
-    reader.readAsArrayBuffer(file)
   }
+
+  const exportMenuItems = [
+    {
+      key: 'xlsx',
+      label: 'Excel形式でエクスポート',
+      onClick: () => handleExport('xlsx')
+    },
+    {
+      key: 'csv',
+      label: 'CSV形式でエクスポート',
+      onClick: () => handleExport('csv')
+    }
+  ]
 
   const columns: ColumnsType<Member> = [
     {
@@ -190,22 +256,22 @@ const MembersPage = ({ profile }: MembersPageProps): React.JSX.Element => {
             メンバー追加
           </Button>
           <Space>
-            <Button type="default" onClick={exportToExcel}>
-              Excelエクスポート
-            </Button>
+            <Dropdown menu={{ items: exportMenuItems }}>
+              <Button type="default">エクスポート</Button>
+            </Dropdown>
             <input
               type="file"
-              accept=".xlsx,.xls"
+              accept=".xlsx,.xls,.csv"
               onChange={(e) => {
                 if (e.target.files?.[0]) {
-                  importFromExcel(e.target.files[0])
+                  importFromFile(e.target.files[0])
                 }
               }}
               style={{ display: 'none' }}
-              id="excel-upload"
+              id="file-upload"
             />
-            <Button type="default" onClick={() => document.getElementById('excel-upload')?.click()}>
-              Excelインポート
+            <Button type="default" onClick={() => document.getElementById('file-upload')?.click()}>
+              インポート
             </Button>
           </Space>
         </div>

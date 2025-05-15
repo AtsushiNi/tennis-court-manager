@@ -1,7 +1,7 @@
 import { ipcMain, app } from 'electron'
 import fs from 'fs/promises'
 import path from 'path'
-import { loadLotterySetting, loadMembers, executeLottery, LotteryCoreOptions } from './lottery-core'
+import { loadLotterySetting, loadMembers, executeLottery, confirmLotteryResult, LotteryCoreOptions } from './lottery-core'
 import { FileConsoleLogger } from './util'
 
 // Electronからlottery-core.tsを使うための関数
@@ -47,6 +47,21 @@ export function setupLotteryHandlers(): void {
       return await executeLottery(setting, members, options)
     } catch (err: unknown) {
       await logger.error(`抽選実行エラー: ${err instanceof Error ? err.message : String(err)}`)
+      return false
+    }
+  })
+
+  // 抽選結果確定
+  ipcMain.handle('confirm-lottery-result', async (_, profileId: string) => {
+    try {
+      const members = await loadMembers(profileId, options)
+      if (!members) {
+        throw new Error('メンバー情報が読み込めませんでした')
+      }
+
+      return await confirmLotteryResult(profileId, members, options)
+    } catch (err: unknown) {
+      await logger.error(`抽選結果確定エラー: ${err instanceof Error ? err.message : String(err)}`)
       return false
     }
   })
