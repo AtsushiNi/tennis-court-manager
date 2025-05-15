@@ -138,7 +138,7 @@ const MembersPage = ({ profile }: MembersPageProps): React.JSX.Element => {
       const jsonData = XLSX.utils.sheet_to_json<Record<string, string>>(firstSheet)
       const formattedData = jsonData.map((item, index) => ({
         name: item['氏名'],
-        id: item['登録番号'],
+        id: Number(item['登録番号']),
         password: item['パスワード'],
         key: String(index + 1),
         ...item
