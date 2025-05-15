@@ -42,6 +42,8 @@ jobs:
         with:
           draft: true
           files: |
+            dist/*.exe
+            dist/*.yml
             dist/*.dmg
             dist/*.zip
             dist/*.blockmap
