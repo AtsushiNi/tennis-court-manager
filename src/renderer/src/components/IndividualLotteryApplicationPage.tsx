@@ -13,7 +13,9 @@ interface IndividualLotteryApplicationPageProps {
   profile: Profile | null
 }
 
-const IndividualLotteryApplicationPage = ({ profile }: IndividualLotteryApplicationPageProps): React.JSX.Element => {
+const IndividualLotteryApplicationPage = ({
+  profile
+}: IndividualLotteryApplicationPageProps): React.JSX.Element => {
   const [form] = Form.useForm()
   const [messageApi, contextHolder] = message.useMessage()
 
@@ -24,15 +26,22 @@ const IndividualLotteryApplicationPage = ({ profile }: IndividualLotteryApplicat
     }
 
     try {
+      // 時間帯から開始時間を抽出（例: "13:00-15:00" → 13）
+      const startHour = parseInt(values.timeSlot.split(':')[0])
+
       const applicationData = {
         memberId: values.memberId,
         name: values.name,
-        date: values.date.format('YYYY-MM-DD'),
-        timeSlot: values.timeSlot
+        date: values.date,
+        startHour,
+        court: {
+          name: 'コート1',
+          type: 'テニス（人工芝）' as const
+        }
       }
 
-      const result = await window.api.submitIndividualLotteryApplication(profile.id, applicationData)
-      
+      const result = await window.api.submitLotteryApplication(profile.id, [applicationData])
+
       if (result.success) {
         messageApi.success('個別抽選申込みが完了しました')
         form.resetFields()
@@ -90,9 +99,7 @@ const IndividualLotteryApplicationPage = ({ profile }: IndividualLotteryApplicat
               <Button type="primary" htmlType="submit">
                 申し込む
               </Button>
-              <Button htmlType="reset">
-                リセット
-              </Button>
+              <Button htmlType="reset">リセット</Button>
             </Space>
           </Form.Item>
         </Form>
