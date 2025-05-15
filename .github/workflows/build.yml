@@ -1,47 +1,59 @@
-name: Build
+name: Build/release Electron app
 
 on:
   push:
-    branches: [ main, electron ]
-  pull_request:
-    branches: [ main, electron ]
+    branches: [main, electron ]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  release:
+    runs-on: ${{ matrix.os }}
+
     strategy:
       matrix:
-        platform: [macos-latest, windows-latest, ubuntu-latest]
-    name: Build for ${{ matrix.platform }}
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Node.js
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
-          
+
       - name: Install pnpm
         run: npm install -g pnpm
-      
-      - name: Install dependencies
+
+      - name: Install Dependencies
         run: pnpm install
-      
-      - name: Build
-        run: |
-          if [[ "${{ matrix.platform }}" == "macos-latest" ]]; then
-            pnpm run build:mac
-          elif [[ "${{ matrix.platform }}" == "windows-latest" ]]; then
-            pnpm run build:win
-          else
-            pnpm run build:linux
-          fi
-      
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+
+      - name: build-linux
+        if: matrix.os == 'ubuntu-latest'
+        run: pnpm run build:linux
+
+      - name: build-mac
+        if: matrix.os == 'macos-latest'
+        run: pnpm run build:mac
+
+      - name: build-win
+        if: matrix.os == 'windows-latest'
+        run: pnpm run build:win
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
         with:
-          name: build-${{ matrix.platform }}
-          path: |
-            dist/
-            release/
+          draft: true
+          files: |
+            dist/*.exe
+            dist/*.zip
+            dist/*.dmg
+            dist/*.AppImage
+            dist/*.snap
+            dist/*.deb
+            dist/*.rpm
+            dist/*.tar.gz
+            dist/*.yml
+            dist/*.blockmap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
