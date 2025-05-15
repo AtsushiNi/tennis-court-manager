@@ -1,0 +1,47 @@
+name: Build
+
+on:
+  push:
+    branches: [ main, electron ]
+  pull_request:
+    branches: [ main, electron ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [macos-latest, windows-latest, ubuntu-latest]
+    name: Build for ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+          
+      - name: Install pnpm
+        run: npm install -g pnpm
+      
+      - name: Install dependencies
+        run: pnpm install
+      
+      - name: Build
+        run: |
+          if [[ "${{ matrix.platform }}" == "macos-latest" ]]; then
+            pnpm run build:mac
+          elif [[ "${{ matrix.platform }}" == "windows-latest" ]]; then
+            pnpm run build:win
+          else
+            pnpm run build:linux
+          fi
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.platform }}
+          path: |
+            dist/
+            release/
