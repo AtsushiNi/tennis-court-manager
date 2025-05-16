@@ -51,6 +51,9 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  // 抽選ハンドラをセットアップ
+  setupLotteryHandlers(mainWindow)
 }
 
 // This method will be called when Electron has finished
@@ -144,9 +147,6 @@ app.whenReady().then(async () => {
       return false
     }
   })
-
-  // 抽選ハンドラをセットアップ
-  setupLotteryHandlers()
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))

@@ -13,6 +13,20 @@ export interface Member {
   password: string
 }
 
+export interface Progress {
+  current: number
+  total: number
+  message: string
+}
+
+export interface LotteryResult {
+  member: Member
+  facility?: string
+  date?: string
+  time?: string
+  status: 'win' | 'lose'
+}
+
 export interface Profile {
   id: string
   name: string

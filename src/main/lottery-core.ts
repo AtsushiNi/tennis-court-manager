@@ -1,6 +1,6 @@
 import fs from 'fs/promises'
 import path from 'path'
-import { Member, LotterySetting, LotteryInfo } from '../common/types'
+import { Member, LotterySetting, LotteryInfo, LotteryResult } from '../common/types'
 import { Logger, FileConsoleLogger, ensureDirectoryExists } from './util'
 import { VALID_COURT_TYPES } from '../common/constants'
 import { login, logout } from './browserOperation'
@@ -9,12 +9,7 @@ import { chromium } from 'playwright'
 export interface LotteryCoreOptions {
   getUserDataPath: () => string
   logger: Logger
-  onProgress?: (progress: {
-    current: number
-    total: number
-    percent: number
-    message: string
-  }) => void
+  onProgress?: (progress: { current: number; total: number; message: string }) => void
 }
 
 // 抽選申込みの設定をファイルから読み込む
@@ -54,12 +49,7 @@ export async function executeLottery(
   setting: LotterySetting,
   members: Member[],
   options: LotteryCoreOptions & {
-    onProgress?: (progress: {
-      current: number
-      total: number
-      percent: number
-      message: string
-    }) => void
+    onProgress?: (progress: { current: number; total: number; message: string }) => void
   }
 ): Promise<boolean> {
   // ログディレクトリ作成
@@ -115,7 +105,6 @@ export async function executeLottery(
           options.onProgress({
             current,
             total,
-            percent: Math.floor((current / total) * 100),
             message: `${member.name} (${member.id}) の抽選処理中...`
           })
         }
@@ -135,10 +124,9 @@ export async function executeLottery(
  * @returns 処理が成功したかどうか
  */
 export async function confirmLotteryResult(
-  profileId: string,
   members: Member[],
   options: LotteryCoreOptions
-): Promise<boolean> {
+): Promise<LotteryResult[]> {
   // ログディレクトリ作成
   const logDir = path.join(options.getUserDataPath(), 'logs')
   await ensureDirectoryExists(logDir)
@@ -150,6 +138,10 @@ export async function confirmLotteryResult(
     members.filter((_, index) => index % CONCURRENCY === i)
   )
 
+  const totalMembers = members.length
+  let processedCount = 0
+  const lotteryResults: LotteryResult[] = []
+
   await Promise.all(
     memberChunks.map(async (chunk, index) => {
       // このプロセス固有のloggerを作成
@@ -160,11 +152,24 @@ export async function confirmLotteryResult(
       const browser = await chromium.launch({ headless: false })
       const context = await browser.newContext()
       const page = await context.newPage()
+      // 自動入力関連のリクエストを抑制
+      await page.setExtraHTTPHeaders({
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      })
       page.on('dialog', async (dialog: import('playwright').Dialog) => {
         await dialog.accept()
       })
 
       for (const member of chunk) {
+        if (options.onProgress) {
+          processedCount++
+          options.onProgress({
+            current: processedCount,
+            total: totalMembers,
+            message: `${member.name} の抽選結果を確認中...`
+          })
+        }
         await logger.info(`=== 処理開始 ===`)
         await logger.info(`対象メンバー: ${member.name}(id: ${member.id}, pw: ${member.password})`)
 
@@ -222,6 +227,14 @@ export async function confirmLotteryResult(
                   await logger.info(`施設: ${data.facility}`)
                   await logger.info(`利用日: ${data.date}`)
                   await logger.info(`利用時間: ${data.time}`)
+                  const result = {
+                    member: member,
+                    status: 'win',
+                    date: data.date,
+                    facility: data.facility,
+                    time: data.time
+                  } as LotteryResult
+                  lotteryResults.push(result)
                 }
               }
             }
@@ -238,5 +251,5 @@ export async function confirmLotteryResult(
     })
   )
 
-  return true
+  return lotteryResults
 }

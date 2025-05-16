@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import { Member, Profile, LotteryTarget } from '../common/types'
+import { Member, Profile, LotteryTarget, Progress } from '../common/types'
 
 // Custom APIs for renderer
 const api = {
@@ -16,8 +16,12 @@ const api = {
     ipcRenderer.invoke('get-application-status', profileId),
   cancelApplication: (profileId: string, applicationKey: string) =>
     ipcRenderer.invoke('cancel-application', profileId, applicationKey),
-  confirmLotteryResult: (profileId: string) =>
-    ipcRenderer.invoke('confirm-lottery-result', profileId)
+  onUpdateLotteryResultProgress: (callback: (progress: Progress) => void) => {
+    ipcRenderer.on('update-lottery-result-progress', (_, progress) => callback(progress))
+  },
+  confirmLotteryResult: (profileId: number) => {
+    return ipcRenderer.invoke('confirm-lottery-result', profileId)
+  }
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

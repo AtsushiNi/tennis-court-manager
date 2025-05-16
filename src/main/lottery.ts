@@ -1,11 +1,18 @@
 import { ipcMain, app } from 'electron'
 import fs from 'fs/promises'
 import path from 'path'
-import { loadLotterySetting, loadMembers, executeLottery, confirmLotteryResult, LotteryCoreOptions } from './lottery-core'
+import {
+  loadLotterySetting,
+  loadMembers,
+  executeLottery,
+  confirmLotteryResult,
+  LotteryCoreOptions
+} from './lottery-core'
 import { FileConsoleLogger } from './util'
+import { Progress } from '../common/types'
 
 // Electronからlottery-core.tsを使うための関数
-export function setupLotteryHandlers(): void {
+export function setupLotteryHandlers(mainWindow: Electron.BrowserWindow): void {
   const getUserDataPath = (): string => app.getPath('userData')
   const logger = new FileConsoleLogger(path.join(getUserDataPath(), 'lottery.log'))
   const options: LotteryCoreOptions = {
@@ -54,12 +61,25 @@ export function setupLotteryHandlers(): void {
   // 抽選結果確定
   ipcMain.handle('confirm-lottery-result', async (_, profileId: string) => {
     try {
-      const members = await loadMembers(profileId, options)
+      const members = await loadMembers(profileId, {
+        getUserDataPath,
+        logger
+      })
       if (!members) {
         throw new Error('メンバー情報が読み込めませんでした')
       }
 
-      return await confirmLotteryResult(profileId, members, options)
+      const progressCallback = (progress: Progress): void => {
+        mainWindow.webContents.send('update-lottery-result-progress', progress)
+      }
+
+      const result = await confirmLotteryResult(members, {
+        getUserDataPath,
+        logger,
+        onProgress: progressCallback
+      })
+
+      return result
     } catch (err: unknown) {
       await logger.error(`抽選結果確定エラー: ${err instanceof Error ? err.message : String(err)}`)
       return false
