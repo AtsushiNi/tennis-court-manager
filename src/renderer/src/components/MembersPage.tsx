@@ -132,9 +132,9 @@ const MembersPage = ({ profile }: MembersPageProps): React.JSX.Element => {
       if (format === 'csv') {
         const csvContent = [
           Object.keys(renamedMembers[0]).join(','),
-          ...renamedMembers.map(member => Object.values(member).join(','))
+          ...renamedMembers.map((member) => Object.values(member).join(','))
         ].join('\n')
-        
+
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
         const url = URL.createObjectURL(blob)
         const link = document.createElement('a')
@@ -165,7 +165,7 @@ const MembersPage = ({ profile }: MembersPageProps): React.JSX.Element => {
 
     try {
       let jsonData: Array<Record<string, string>>
-      
+
       if (file.name.endsWith('.csv')) {
         const text = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader()

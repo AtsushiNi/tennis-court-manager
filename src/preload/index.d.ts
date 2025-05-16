@@ -1,5 +1,5 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
-import { LotteryTarget, Progress } from 'src/common/types'
+import { LotteryResult, LotteryTarget, Progress } from 'src/common/types'
 
 declare global {
   interface Window {
@@ -17,7 +17,7 @@ declare global {
       getApplicationStatus: (profileId: string) => Promise<ApplicationStatus[]>
       cancelApplication: (profileId: string, applicationKey: string) => Promise<boolean>
       onUpdateLotteryResultProgress: (callback: (progress: Progress) => void) => void
-      confirmLotteryResult: (profileId: string) => Promise<boolean>
+      confirmLotteryResult: (profileId: string) => Promise<LotteryResult[]>
     }
   }
 }

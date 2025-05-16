@@ -24,7 +24,7 @@ export interface LotteryResult {
   facility?: string
   date?: string
   time?: string
-  status: 'win' | 'lose'
+  status: 'win' | 'lose' | 'login-failed' | 'error'
 }
 
 export interface Profile {

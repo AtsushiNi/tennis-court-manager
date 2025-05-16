@@ -183,6 +183,11 @@ export async function confirmLotteryResult(
           )
           if (!loginSuccess) {
             await logger.error('ログインに失敗しました')
+            const result = {
+              member: member,
+              status: 'login-failed'
+            } as LotteryResult
+            lotteryResults.push(result)
             continue
           }
 
@@ -244,6 +249,11 @@ export async function confirmLotteryResult(
           await logout(page, (msg) => logger.info(msg))
         } catch (error) {
           logger.error(String(error))
+          const result = {
+            member: member,
+            status: 'error'
+          } as LotteryResult
+          lotteryResults.push(result)
         }
       }
 
