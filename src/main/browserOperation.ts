@@ -62,7 +62,3 @@ export async function logout(page: Page, log: (msg: string) => void): Promise<vo
     page.waitForLoadState('domcontentloaded', { timeout: 60000 })
   ])
 }
-
-/**
- * 抽選結果を確認する
- */

@@ -1,61 +1,17 @@
-import fs from 'fs/promises'
-import path from 'path'
-import { Member, LotterySetting, LotteryInfo, LotteryResult } from '../common/types'
-import { Logger, FileConsoleLogger, ensureDirectoryExists } from './util'
+import { Member, LotterySetting, LotteryInfo, LotteryResult, Progress } from '../common/types'
+import { FileConsoleLogger } from './util'
 import { VALID_COURT_TYPES } from '../common/constants'
 import { login, logout } from './browserOperation'
 import { chromium } from 'playwright'
 
-export interface LotteryCoreOptions {
-  getUserDataPath: () => string
-  logger: Logger
-  onProgress?: (progress: { current: number; total: number; message: string }) => void
-}
-
-// 抽選申込みの設定をファイルから読み込む
-export async function loadLotterySetting(
-  profileId: string,
-  options: LotteryCoreOptions
-): Promise<LotterySetting | null> {
-  const settingFile = path.join(options.getUserDataPath(), `lottery-setting_${profileId}.json`)
-  try {
-    const data = await fs.readFile(settingFile, 'utf-8')
-    return JSON.parse(data) as LotterySetting
-  } catch (err: unknown) {
-    const message = `Failed to load lottery setting: ${err instanceof Error ? err.message : String(err)}`
-    await options.logger.error(message)
-    return null
-  }
-}
-
-// メンバー情報をファイルから読み込む
-export async function loadMembers(
-  profileId: string,
-  options: LotteryCoreOptions
-): Promise<Member[] | null> {
-  const membersFile = path.join(options.getUserDataPath(), `profile_${profileId}.json`)
-  try {
-    const data = await fs.readFile(membersFile, 'utf-8')
-    return JSON.parse(data) as Member[]
-  } catch (err: unknown) {
-    const message = `Failed to load members: ${err instanceof Error ? err.message : String(err)}`
-    await options.logger.error(message)
-    return null
-  }
-}
-
-// 抽選申込み処理を全メンバー一括で実行する
+/*
+ * 抽選申込み処理を全メンバー一括で実行する
+ */
 export async function executeLottery(
   setting: LotterySetting,
   members: Member[],
-  options: LotteryCoreOptions & {
-    onProgress?: (progress: { current: number; total: number; message: string }) => void
-  }
+  onProgress: (progress: Progress) => void
 ): Promise<boolean> {
-  // ログディレクトリ作成
-  const logDir = path.join(options.getUserDataPath(), 'logs')
-  await ensureDirectoryExists(logDir)
-
   // ユーザーを予約コート・日時で均等に振り分け
   const lotteryInfoGroup: LotteryInfo[][] = Array.from({ length: setting.targets.length }, () => [])
   members.forEach((member: Member, i: number) => {
@@ -77,7 +33,7 @@ export async function executeLottery(
       const { lotteryTarget } = lotteryInfoList[0]
       // このプロセス固有のloggerを作成
       const logFileName = `${index}_${lotteryTarget.date.month() + 1}-${lotteryTarget.date.date()}${lotteryTarget.court.name.replace(/\s+/g, '_')}_${lotteryTarget.startHour}.log`
-      const logger = new FileConsoleLogger(path.join(logDir, logFileName))
+      const logger = new FileConsoleLogger(logFileName)
 
       await logger.info(`=== 処理開始 ===`)
       await logger.info(`対象コート: ${lotteryTarget.court.name} (${lotteryTarget.court.type})`)
@@ -99,15 +55,11 @@ export async function executeLottery(
         )
 
         // 進捗通知
-        if (options.onProgress) {
-          const current = lotteryInfo.lotteryNo
-          const total = members.length
-          options.onProgress({
-            current,
-            total,
-            message: `${member.name} (${member.id}) の抽選処理中...`
-          })
-        }
+        onProgress({
+          current: lotteryInfo.lotteryNo,
+          total: members.length,
+          message: `${member.name} (${member.id}) の抽選処理中...`
+        })
 
         // ここに抽選処理を実装
       }
@@ -119,18 +71,11 @@ export async function executeLottery(
 
 /**
  * 抽選結果を確定する
- * @param profileId プロファイルID
- * @param options LotteryCoreOptions
- * @returns 処理が成功したかどうか
  */
 export async function confirmLotteryResult(
   members: Member[],
-  options: LotteryCoreOptions
+  onProgress: (progress: Progress) => void
 ): Promise<LotteryResult[]> {
-  // ログディレクトリ作成
-  const logDir = path.join(options.getUserDataPath(), 'logs')
-  await ensureDirectoryExists(logDir)
-
   // 並行実行数
   const CONCURRENCY = 5
   // membersをCONCURRENCY数で分割
@@ -146,7 +91,7 @@ export async function confirmLotteryResult(
     memberChunks.map(async (chunk, index) => {
       // このプロセス固有のloggerを作成
       const logFileName = `${index}_confirm-lottery-result.log`
-      const logger = new FileConsoleLogger(path.join(logDir, logFileName))
+      const logger = new FileConsoleLogger(logFileName)
 
       // ブラウザを起動
       const browser = await chromium.launch({ headless: false })
@@ -162,14 +107,12 @@ export async function confirmLotteryResult(
       })
 
       for (const member of chunk) {
-        if (options.onProgress) {
-          processedCount++
-          options.onProgress({
-            current: processedCount,
-            total: totalMembers,
-            message: `${member.name} の抽選結果を確認中...`
-          })
-        }
+        processedCount++
+        onProgress({
+          current: processedCount,
+          total: totalMembers,
+          message: `${member.name} の抽選結果を確認中...`
+        })
         await logger.info(`=== 処理開始 ===`)
         await logger.info(`対象メンバー: ${member.name}(id: ${member.id}, pw: ${member.password})`)
 
