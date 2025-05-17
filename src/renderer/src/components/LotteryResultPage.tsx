@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 
 interface Props {
   profile: Profile | null
+  onNavigateToStatus?: () => void
 }
 
 interface ProgressInfo {
@@ -12,7 +13,7 @@ interface ProgressInfo {
   message: string
 }
 
-export default function LotteryResultPage({ profile }: Props): React.JSX.Element {
+export default function LotteryResultPage({ profile, onNavigateToStatus }: Props): React.JSX.Element {
   const [progress, setProgress] = useState<ProgressInfo | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [hasConfirmed, setHasConfirmed] = useState(false)
@@ -123,6 +124,19 @@ export default function LotteryResultPage({ profile }: Props): React.JSX.Element
             {progress.message} ({progress.current}/{progress.total})
           </Typography.Text>
         </Space>
+      )}
+
+      {hasConfirmed && (
+        <Card style={{ marginTop: 16 }} title="確定完了">
+          <Typography.Text>
+            状況確認をクリックして確定漏れがないことを確認してください
+          </Typography.Text>
+          <div style={{ marginTop: 16 }}>
+            <Button type="primary" onClick={() => onNavigateToStatus?.()}>
+              状況確認ページへ遷移
+            </Button>
+          </div>
+        </Card>
       )}
 
       {results.length > 0 ? (

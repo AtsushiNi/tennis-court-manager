@@ -1,8 +1,8 @@
 import { Member, LotterySetting, LotteryInfo, LotteryResult, Progress } from '../common/types'
 import { FileConsoleLogger } from './util'
 import { VALID_COURT_TYPES } from '../common/constants'
-import { login, logout } from './browserOperation'
-import { chromium } from 'playwright'
+import { login } from './browserOperation'
+import { chromium, Page } from 'playwright'
 
 /*
  * 抽選申込み処理を全メンバー一括で実行する
@@ -102,46 +102,9 @@ export async function confirmLotteryResult(
           total: totalMembers,
           message: `${member.name} の抽選結果を確認中...`
         })
-        await logger.info(`=== 処理開始 ===`)
-        await logger.info(`対象メンバー: ${member.name}(id: ${member.id}, pw: ${member.password})`)
-
-        try {
-          // ログイン
-          const loginSuccess = await login(page, logger, member.id, member.password)
-          if (!loginSuccess) {
-            await logger.error('ログインに失敗しました')
-            lotteryResults.push(createResult(member, 'login-failed'))
-            continue
-          }
-
-          // 抽選結果取得
-          const resultData = await getLotteryResults(page, logger)
-          if (!resultData) {
-            await logger.info('落選')
-            continue
-          }
-
-          // 抽選結果確定
-          await page.getByRole('button', { name: ' 確認' }).click()
-          await page.waitForLoadState('networkidle')
-          await page.getByLabel('利用人数').fill('4')
-          await page.getByRole('button', { name: ' 確認' }).click()
-          await page.waitForLoadState('networkidle')
-
-          // 結果データ処理
-          await logger.info('当選')
-          for (const data of resultData) {
-            await logger.info(`施設: ${data.facility}`)
-            await logger.info(`利用日: ${data.date}`)
-            await logger.info(`利用時間: ${data.time}`)
-            lotteryResults.push(createResult(member, 'win', data))
-          }
-
-          // ログアウト
-          await logout(page, logger)
-        } catch (error) {
-          logger.error(String(error))
-          lotteryResults.push(createResult(member, 'error'))
+        const result = await confirmLotteryResultForMember(page, member, logger)
+        if (result) {
+          lotteryResults.push(result)
         }
       }
 
@@ -149,7 +112,72 @@ export async function confirmLotteryResult(
     })
   )
 
+  // エラーになったメンバーに関して再実行する
+  const errorResults = lotteryResults.filter(result => result.status === 'error')
+  const { browser, page } = await initBrowser()
+  const logger = new FileConsoleLogger('confirm-lottery-result-retry.log')
+  for (const [index, result] of errorResults.entries()) {
+    onProgress({
+      current: index+1,
+      total: errorResults.length,
+      message: `${result.member.name} の抽選結果を再確認中...`
+    })
+    const newResult = await confirmLotteryResultForMember(page, result.member, logger)
+    // 結果の書き換え
+    const resultIndex = lotteryResults.findIndex(r => r.member.id === result.member.id)
+    if (resultIndex !== -1) {
+      if (newResult) {
+        lotteryResults[resultIndex] = newResult
+      } else {
+        lotteryResults.splice(resultIndex, 1)
+      }
+    }
+  }
+  await browser.close()
+
   return lotteryResults
+}
+
+async function confirmLotteryResultForMember(
+  page: Page,
+  member: Member,
+  logger: FileConsoleLogger
+): Promise<LotteryResult | null> {
+  await logger.info(`=== 処理開始 ===`)
+  await logger.info(`対象メンバー: ${member.name}(id: ${member.id}, pw: ${member.password})`)
+
+  try {
+    // ログイン
+    const loginSuccess = await login(page, logger, member.id, member.password)
+    if (!loginSuccess) {
+      await logger.error('ログインに失敗しました')
+      return createResult(member, 'login-failed')
+    }
+
+    // 抽選結果取得
+    const resultData = await getLotteryResults(page, logger)
+    if (!resultData) {
+      await logger.info('落選')
+      return null
+    }
+
+    // 抽選結果確定
+    await page.getByRole('button', { name: ' 確認' }).click()
+    await page.waitForLoadState('networkidle')
+    await page.getByLabel('利用人数').fill('4')
+    // await page.getByRole('button', { name: ' 確認' }).click()
+    // await page.waitForLoadState('networkidle')
+
+    // 結果データ処理
+    await logger.info('当選')
+    await logger.info(`施設: ${resultData.facility}`)
+    await logger.info(`利用日: ${resultData.date}`)
+    await logger.info(`利用時間: ${resultData.time}`)
+    return createResult(member, 'win', resultData)
+  } catch (error) {
+    logger.error(String(error))
+    return createResult(member, 'error')
+  }
 }
 
 /**
@@ -182,7 +210,7 @@ async function initBrowser(): Promise<{
 async function getLotteryResults(
   page: import('playwright').Page,
   logger: FileConsoleLogger
-): Promise<Array<{ facility?: string; date?: string; time?: string }> | null> {
+): Promise<{ facility?: string; date?: string; time?: string } | null> {
   try {
     await logger.info('抽選結果ページへ遷移します')
     await page.getByRole('link', { name: '抽選 ⏷' }).click()
@@ -208,19 +236,23 @@ async function getLotteryResults(
       if (!table) return null
 
       const rows = table.querySelectorAll('tbody tr')
-      return Array.from(rows).map((row) => {
-        const facility = row.querySelector('td:nth-child(1) span:nth-child(2)')?.textContent?.trim()
-        const date = row.querySelector('td:nth-child(2) span.dow-saturday')?.textContent?.trim()
-        const time = row.querySelector('td:nth-child(3) label')?.textContent?.trim()?.substring(3)
+      const firstRow = Array.from(rows)[0]
+      const facility = firstRow
+        .querySelector('td:nth-child(1) span:nth-child(2)')
+        ?.textContent?.trim()
+      const date = firstRow.querySelector('td:nth-child(2) span.dow-saturday')?.textContent?.trim()
+      const time = firstRow
+        .querySelector('td:nth-child(3) label')
+        ?.textContent?.trim()
+        ?.substring(3)
 
-        // 選択チェックボックスをクリック
-        const checkbox = row.querySelector('input[name="checkElect"]')
-        if (checkbox) {
-          ;(checkbox as HTMLInputElement).click()
-        }
+      // 選択チェックボックスをクリック
+      const checkbox = firstRow.querySelector('input[name="checkElect"]')
+      if (checkbox) {
+        ;(checkbox as HTMLInputElement).click()
+      }
 
-        return { facility, date, time }
-      })
+      return { facility, date, time }
     })
   } catch (error) {
     await logger.error(`抽選結果取得中にエラーが発生しました: ${error}`)

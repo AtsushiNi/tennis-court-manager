@@ -183,7 +183,12 @@ function AppComponent(): React.JSX.Element {
             <IndividualLotteryApplicationPage profile={currentProfile} />
           )}
           {currentPage === 'status' && <StatusCheckPage profile={currentProfile} />}
-          {currentPage === 'result' && <LotteryResultPage profile={currentProfile} />}
+          {currentPage === 'result' && (
+            <LotteryResultPage 
+              profile={currentProfile} 
+              onNavigateToStatus={() => setCurrentPage('status')} 
+            />
+          )}
         </Content>
       </Layout>
       <Modal
