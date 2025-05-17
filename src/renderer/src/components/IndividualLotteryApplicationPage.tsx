@@ -1,4 +1,4 @@
-import { Button, Form, Input, DatePicker, message, Space } from 'antd'
+import { Button, Form, Input, DatePicker, message, Space, Typography } from 'antd'
 import type { Dayjs } from 'dayjs'
 import { Profile } from '../../../common/types'
 
@@ -58,7 +58,7 @@ const IndividualLotteryApplicationPage = ({
     <>
       {contextHolder}
       <div>
-        <h1 style={{ marginBottom: '20px' }}>個別抽選申込み</h1>
+        <Typography.Title level={2} style={{ marginBottom: '20px' }}>個別抽選申込み</Typography.Title>
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Form.Item
             name="name"

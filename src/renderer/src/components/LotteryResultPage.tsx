@@ -13,7 +13,10 @@ interface ProgressInfo {
   message: string
 }
 
-export default function LotteryResultPage({ profile, onNavigateToStatus }: Props): React.JSX.Element {
+export default function LotteryResultPage({
+  profile,
+  onNavigateToStatus
+}: Props): React.JSX.Element {
   const [progress, setProgress] = useState<ProgressInfo | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [hasConfirmed, setHasConfirmed] = useState(false)
@@ -112,49 +115,57 @@ export default function LotteryResultPage({ profile, onNavigateToStatus }: Props
   ]
 
   return (
-    <Card title="抽選結果確定" bordered={false}>
-      <Button type="primary" onClick={handleConfirm} loading={isProcessing} disabled={isProcessing}>
-        抽選結果を確認・確定
-      </Button>
+    <>
+      <Typography.Title level={2} style={{ marginBottom: 20 }}>抽選結果確定</Typography.Title>
+      <Card bordered={false}>
+        <Button
+          type="primary"
+          onClick={handleConfirm}
+          loading={isProcessing}
+          disabled={isProcessing}
+        >
+          抽選結果を確認・確定
+        </Button>
 
-      {progress && (
-        <Space direction="vertical" style={{ marginTop: 16, width: '100%' }}>
-          <Progress percent={percent} />
-          <Typography.Text>
-            {progress.message} ({progress.current}/{progress.total})
-          </Typography.Text>
-        </Space>
-      )}
+        {progress && (
+          <Space direction="vertical" style={{ marginTop: 16, width: '100%' }}>
+            <Progress percent={percent} />
+            <Typography.Text>
+              {progress.message} ({progress.current}/{progress.total})
+            </Typography.Text>
+          </Space>
+        )}
 
-      {hasConfirmed && (
-        <Card style={{ marginTop: 16 }} title="確定完了">
-          <Typography.Text>
-            状況確認をクリックして確定漏れがないことを確認してください
-          </Typography.Text>
-          <div style={{ marginTop: 16 }}>
-            <Button type="primary" onClick={() => onNavigateToStatus?.()}>
-              状況確認ページへ遷移
-            </Button>
-          </div>
-        </Card>
-      )}
+        {hasConfirmed && (
+          <Card style={{ marginTop: 16 }} title="確定完了">
+            <Typography.Text>
+              状況確認をクリックして確定漏れがないことを確認してください
+            </Typography.Text>
+            <div style={{ marginTop: 16 }}>
+              <Button type="primary" onClick={() => onNavigateToStatus?.()}>
+                状況確認ページへ遷移
+              </Button>
+            </div>
+          </Card>
+        )}
 
-      {results.length > 0 ? (
-        <Table
-          title={() => '抽選結果'}
-          bordered
-          dataSource={results}
-          columns={columns}
-          style={{ marginTop: 16 }}
-          rowKey={(record) => record.member.id}
-        />
-      ) : (
-        hasConfirmed && (
-          <Typography.Text style={{ marginTop: 16, display: 'block' }}>
-            当選結果はありません
-          </Typography.Text>
-        )
-      )}
-    </Card>
+        {results.length > 0 ? (
+          <Table
+            title={() => '抽選結果'}
+            bordered
+            dataSource={results}
+            columns={columns}
+            style={{ marginTop: 16 }}
+            rowKey={(record) => record.member.id}
+          />
+        ) : (
+          hasConfirmed && (
+            <Typography.Text style={{ marginTop: 16, display: 'block' }}>
+              当選結果はありません
+            </Typography.Text>
+          )
+        )}
+      </Card>
+    </>
   )
 }

@@ -1,4 +1,4 @@
-import { Button, Form, DatePicker, message, Space, Select, ConfigProvider } from 'antd'
+import { Button, Form, DatePicker, message, Space, Select, ConfigProvider, Typography } from 'antd'
 import dayjs from 'dayjs'
 import locale from 'antd/locale/ja_JP'
 import 'dayjs/locale/ja'
@@ -40,7 +40,7 @@ const BulkLotteryApplicationPage = ({
     <ConfigProvider locale={locale}>
       {contextHolder}
       <div>
-        <h1 style={{ marginBottom: '20px' }}>一括抽選申込み</h1>
+        <Typography.Title level={2} style={{ marginBottom: '20px' }}>一括抽選申込み</Typography.Title>
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Form.List name="lotteryTargets">
             {(fields, { add, remove }) => (

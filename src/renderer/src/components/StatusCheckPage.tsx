@@ -1,4 +1,4 @@
-import { Table, Button, Space, message, Tag } from 'antd'
+import { Table, Button, Space, message, Tag, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import type { ColumnsType } from 'antd/es/table'
 import { Profile } from '../../../common/types'
@@ -103,7 +103,7 @@ const StatusCheckPage = ({ profile }: StatusCheckPageProps): React.JSX.Element =
     <>
       {contextHolder}
       <div>
-        <h1 style={{ marginBottom: '20px' }}>申込み状況確認</h1>
+        <Typography.Title level={2} style={{ marginBottom: '20px' }}>状況確認</Typography.Title>
         <Table
           columns={columns}
           dataSource={applications}

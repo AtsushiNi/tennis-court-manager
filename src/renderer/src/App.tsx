@@ -122,14 +122,20 @@ function AppComponent(): React.JSX.Element {
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider collapsible>
-        <div
-          className="logo"
-          style={{
-            height: '32px',
-            margin: '16px',
-            background: 'rgba(255, 255, 255, 0.2)'
-          }}
-        />
+        <div className="logo-wrapper" style={{textAlign: 'center'}}>
+          <img
+            className="logo"
+            src="./src/assets/logo.svg"
+            style={{
+              height: '60px',
+              margin: '16px',
+              marginTop: 20,
+              objectFit: 'contain',
+              filter: 'brightness(0) invert(1)'
+            }}
+            alt="Tennis Court Manager Logo"
+          />
+        </div>
         <div style={{ padding: '16px', borderBottom: '1px solid #434343' }}>
           <Dropdown overlay={profileMenu} placement="bottomLeft" trigger={['click']}>
             <Button

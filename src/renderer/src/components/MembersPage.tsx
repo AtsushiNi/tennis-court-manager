@@ -1,4 +1,4 @@
-import { Table, Button, Space, message, Modal, Form, Input, Dropdown } from 'antd'
+import { Table, Button, Space, message, Modal, Form, Input, Dropdown, Typography } from 'antd'
 import { useState, useEffect } from 'react'
 import type { ColumnsType } from 'antd/es/table'
 import * as XLSX from 'xlsx'
@@ -250,7 +250,7 @@ const MembersPage = ({ profile }: MembersPageProps): React.JSX.Element => {
     <>
       {contextHolder}
       <div>
-        <h1 style={{ marginBottom: '20px' }}>カード一覧</h1>
+        <Typography.Title level={2} style={{ marginBottom: '20px' }}>カード一覧</Typography.Title>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
           <Button type="primary" onClick={() => setIsModalOpen(true)}>
             メンバー追加
