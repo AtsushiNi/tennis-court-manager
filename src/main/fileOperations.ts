@@ -5,8 +5,6 @@ import { Member, LotterySetting, Profile } from '../common/types'
 import { FileConsoleLogger } from './util'
 
 const DATA_DIR = app.getPath('userData')
-const LOG_DIR = path.join(DATA_DIR, 'logs')
-
 const logger = new FileConsoleLogger('file-operations.log')
 
 /**
@@ -145,19 +143,4 @@ export async function saveLotterySetting(
     )
     return false
   }
-}
-
-/**
- * ログの出力
- */
-export async function saveLog(logFileName: string, message: string): Promise<void> {
-  // ログフォルダの確認
-  try {
-    await fs.access(LOG_DIR)
-  } catch {
-    await fs.mkdir(LOG_DIR, { recursive: true })
-  }
-
-  // ログの出力
-  await fs.appendFile(path.join(LOG_DIR, logFileName), message)
 }

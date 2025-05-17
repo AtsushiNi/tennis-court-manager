@@ -93,18 +93,7 @@ export async function confirmLotteryResult(
       const logFileName = `${index}_confirm-lottery-result.log`
       const logger = new FileConsoleLogger(logFileName)
 
-      // ブラウザを起動
-      const browser = await chromium.launch({ headless: false })
-      const context = await browser.newContext()
-      const page = await context.newPage()
-      // 自動入力関連のリクエストを抑制
-      await page.setExtraHTTPHeaders({
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      })
-      page.on('dialog', async (dialog: import('playwright').Dialog) => {
-        await dialog.accept()
-      })
+      const { browser, page } = await initBrowser()
 
       for (const member of chunk) {
         processedCount++
@@ -118,85 +107,41 @@ export async function confirmLotteryResult(
 
         try {
           // ログイン
-          const loginSuccess = await login(
-            page,
-            (msg) => logger.info(msg),
-            member.id,
-            member.password
-          )
+          const loginSuccess = await login(page, logger, member.id, member.password)
           if (!loginSuccess) {
             await logger.error('ログインに失敗しました')
-            const result = {
-              member: member,
-              status: 'login-failed'
-            } as LotteryResult
-            lotteryResults.push(result)
+            lotteryResults.push(createResult(member, 'login-failed'))
             continue
           }
 
-          // 抽選結果ページへ遷移
-          await page.getByRole('link', { name: '抽選 ⏷' }).click()
-          await page.getByRole('link', { name: '抽選結果' }).click()
+          // 抽選結果取得
+          const resultData = await getLotteryResults(page, logger)
+          if (!resultData) {
+            await logger.info('落選')
+            continue
+          }
+
+          // 抽選結果確定
+          await page.getByRole('button', { name: ' 確認' }).click()
+          await page.waitForLoadState('networkidle')
+          await page.getByLabel('利用人数').fill('4')
+          await page.getByRole('button', { name: ' 確認' }).click()
           await page.waitForLoadState('networkidle')
 
-          // 抽選結果確認
-          const resultArticle = await page.$('#lottery-result')
-          if (resultArticle) {
-            const textContent = await resultArticle.textContent()
-            if (textContent?.includes('該当する抽選はありません')) {
-              // 落選
-              await logger.info('落選')
-            } else {
-              await logger.info('当選')
-
-              // 当選結果テーブルから情報を抽出
-              const resultData = await page.evaluate(() => {
-                const table = document.querySelector('#lottery-result table')
-                if (!table) return null
-
-                const rows = table.querySelectorAll('tbody tr')
-                return Array.from(rows).map((row) => {
-                  const facility = row
-                    .querySelector('td:nth-child(1) span:nth-child(2)')
-                    ?.textContent?.trim()
-                  const date = row
-                    .querySelector('td:nth-child(2) span.dow-saturday')
-                    ?.textContent?.trim()
-                  const time = row
-                    .querySelector('td:nth-child(3) label')
-                    ?.textContent?.trim()
-                    ?.substring(3)
-                  return { facility, date, time }
-                })
-              })
-
-              if (resultData) {
-                for (const data of resultData) {
-                  await logger.info(`施設: ${data.facility}`)
-                  await logger.info(`利用日: ${data.date}`)
-                  await logger.info(`利用時間: ${data.time}`)
-                  const result = {
-                    member: member,
-                    status: 'win',
-                    date: data.date,
-                    facility: data.facility,
-                    time: data.time
-                  } as LotteryResult
-                  lotteryResults.push(result)
-                }
-              }
-            }
+          // 結果データ処理
+          await logger.info('当選')
+          for (const data of resultData) {
+            await logger.info(`施設: ${data.facility}`)
+            await logger.info(`利用日: ${data.date}`)
+            await logger.info(`利用時間: ${data.time}`)
+            lotteryResults.push(createResult(member, 'win', data))
           }
 
           // ログアウト
-          await logout(page, (msg) => logger.info(msg))
+          await logout(page, logger)
         } catch (error) {
           logger.error(String(error))
-          const result = {
-            member: member,
-            status: 'error'
-          } as LotteryResult
-          lotteryResults.push(result)
+          lotteryResults.push(createResult(member, 'error'))
         }
       }
 
@@ -205,4 +150,99 @@ export async function confirmLotteryResult(
   )
 
   return lotteryResults
+}
+
+/**
+ * ブラウザを初期化する
+ */
+async function initBrowser(): Promise<{
+  browser: import('playwright').Browser
+  page: import('playwright').Page
+}> {
+  const browser = await chromium.launch({ headless: false })
+  const context = await browser.newContext()
+  const page = await context.newPage()
+
+  // 自動入力関連のリクエストを抑制
+  await page.setExtraHTTPHeaders({
+    'User-Agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+  })
+
+  page.on('dialog', async (dialog: import('playwright').Dialog) => {
+    await dialog.accept()
+  })
+
+  return { browser, page }
+}
+
+/**
+ * 抽選結果ページからデータを取得する
+ */
+async function getLotteryResults(
+  page: import('playwright').Page,
+  logger: FileConsoleLogger
+): Promise<Array<{ facility?: string; date?: string; time?: string }> | null> {
+  try {
+    await logger.info('抽選結果ページへ遷移します')
+    await page.getByRole('link', { name: '抽選 ⏷' }).click()
+    await page.getByRole('link', { name: '抽選結果' }).click()
+    await page.waitForLoadState('networkidle')
+
+    await logger.info('抽選結果を確認中...')
+    const resultArticle = await page.$('#lottery-result')
+    if (!resultArticle) {
+      throw new Error('抽選結果ページで内容を取得できませんでした')
+    }
+
+    const textContent = await resultArticle.textContent()
+
+    // 落選
+    if (textContent?.includes('該当する抽選はありません')) {
+      return null
+    }
+
+    // 当選結果テーブルから情報を抽出
+    return await page.evaluate(() => {
+      const table = document.querySelector('#lottery-result table')
+      if (!table) return null
+
+      const rows = table.querySelectorAll('tbody tr')
+      return Array.from(rows).map((row) => {
+        const facility = row.querySelector('td:nth-child(1) span:nth-child(2)')?.textContent?.trim()
+        const date = row.querySelector('td:nth-child(2) span.dow-saturday')?.textContent?.trim()
+        const time = row.querySelector('td:nth-child(3) label')?.textContent?.trim()?.substring(3)
+
+        // 選択チェックボックスをクリック
+        const checkbox = row.querySelector('input[name="checkElect"]')
+        if (checkbox) {
+          ;(checkbox as HTMLInputElement).click()
+        }
+
+        return { facility, date, time }
+      })
+    })
+  } catch (error) {
+    await logger.error(`抽選結果取得中にエラーが発生しました: ${error}`)
+    throw error
+  }
+}
+
+/**
+ * LotteryResultオブジェクトを生成する
+ */
+function createResult(
+  member: Member,
+  status: 'win' | 'login-failed' | 'error',
+  data?: { facility?: string; date?: string; time?: string }
+): LotteryResult {
+  return {
+    member,
+    status,
+    ...(data && {
+      facility: data.facility,
+      date: data.date,
+      time: data.time
+    })
+  }
 }

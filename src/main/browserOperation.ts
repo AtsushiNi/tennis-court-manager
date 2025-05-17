@@ -1,11 +1,12 @@
 import { Page } from 'playwright'
+import { FileConsoleLogger } from './util'
 
 /**
  * システムにログインする
  */
 export async function login(
   page: Page,
-  log: (msg: string) => void,
+  logger: FileConsoleLogger,
   userNumber: number,
   password: string
 ): Promise<boolean> {
@@ -14,25 +15,25 @@ export async function login(
     timeout: 60000,
     waitUntil: 'domcontentloaded'
   })
-  log('予約サイトにアクセスしました')
+  logger.info('予約サイトにアクセスしました')
 
   // ログインボタンをクリック
   await page.waitForLoadState('networkidle', { timeout: 60000 })
   await page.waitForSelector('#loadmsg', { state: 'hidden', timeout: 30000 })
   await page.getByRole('button', { name: ' ログイン' }).click()
-  log('ログインボタンをクリック')
+  logger.info('ログインボタンをクリック')
 
   // 利用者番号を入力
   await page.getByRole('textbox', { name: '利用者番号' }).fill(String(userNumber))
-  log('利用者番号を入力')
+  logger.info('利用者番号を入力')
 
   // パスワードを入力
   await page.getByRole('textbox', { name: 'パスワード' }).fill(password)
-  log('パスワードを入力')
+  logger.info('パスワードを入力')
 
   // ログインボタンをクリック
   await page.getByRole('button', { name: ' ログイン' }).click()
-  log('ログインを実行')
+  logger.info('ログインを実行')
 
   // ログイン成功可否を確認
   await Promise.race([
@@ -50,8 +51,8 @@ export async function login(
 /**
  * システムからログアウトする
  */
-export async function logout(page: Page, log: (msg: string) => void): Promise<void> {
-  log('ログアウトを実行')
+export async function logout(page: Page, logger: FileConsoleLogger): Promise<void> {
+  logger.info('ログアウトを実行')
   await page.waitForSelector('#loadmsg', { state: 'hidden', timeout: 30000 })
   await page.getByRole('link', { name: ' マイメニュー' }).click()
   await page.getByRole('link', { name: 'ログアウト' }).click()
