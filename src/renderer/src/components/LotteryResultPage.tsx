@@ -1,5 +1,5 @@
-import { Card, Button, message, Progress, Space, Typography, Table, Tag } from 'antd'
-import type { LotteryResult, Profile } from '../../../common/types'
+import { Card, Button, message, Progress as ProgressBar, Space, Typography, Table, Tag } from 'antd'
+import type { LotteryResult, Profile, Progress } from '../../../common/types'
 import { useState, useEffect } from 'react'
 
 interface Props {
@@ -7,17 +7,11 @@ interface Props {
   onNavigateToStatus?: () => void
 }
 
-interface ProgressInfo {
-  current: number
-  total: number
-  message: string
-}
-
 export default function LotteryResultPage({
   profile,
   onNavigateToStatus
 }: Props): React.JSX.Element {
-  const [progress, setProgress] = useState<ProgressInfo | null>(null)
+  const [progress, setProgress] = useState<Progress | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [hasConfirmed, setHasConfirmed] = useState(false)
   const [results, setResults] = useState<LotteryResult[]>([])
@@ -116,7 +110,9 @@ export default function LotteryResultPage({
 
   return (
     <>
-      <Typography.Title level={2} style={{ marginBottom: 20 }}>抽選結果確定</Typography.Title>
+      <Typography.Title level={2} style={{ marginBottom: 20 }}>
+        抽選結果確定
+      </Typography.Title>
       <Card bordered={false}>
         <Button
           type="primary"
@@ -129,7 +125,7 @@ export default function LotteryResultPage({
 
         {progress && (
           <Space direction="vertical" style={{ marginTop: 16, width: '100%' }}>
-            <Progress percent={percent} />
+            <ProgressBar percent={percent} />
             <Typography.Text>
               {progress.message} ({progress.current}/{progress.total})
             </Typography.Text>

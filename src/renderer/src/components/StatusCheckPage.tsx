@@ -1,59 +1,67 @@
-import { Table, Button, Space, message, Tag, Typography } from 'antd'
+import { Table, Button, Space, message, Typography, Card, Progress as ProgressBar } from 'antd'
 import { useEffect, useState } from 'react'
 import type { ColumnsType } from 'antd/es/table'
-import { Profile } from '../../../common/types'
-
-interface ApplicationStatus {
-  key: string
-  date: string
-  timeSlot: string
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled'
-  courtNumber?: number
-}
+import {
+  Profile,
+  ApplicationStatus,
+  Progress,
+  Member,
+  LotteryStatus,
+  LotteryResultStatus,
+  ReservationStatus
+} from '../../../common/types'
 
 interface StatusCheckPageProps {
   profile: Profile | null
 }
 
 const StatusCheckPage = ({ profile }: StatusCheckPageProps): React.JSX.Element => {
-  const [applications, setApplications] = useState<ApplicationStatus[]>([])
+  const [progress, setProgress] = useState<Progress | null>(null)
+  const [applications, setApplications] = useState<ApplicationStatus | null>(null)
   const [loading, setLoading] = useState(false)
   const [messageApi, contextHolder] = message.useMessage()
 
   useEffect(() => {
+    window.api.onGetApplicationStatusProgress((progress) => {
+      console.log(progress)
+      setProgress(progress)
+    })
+  })
+
+  const updateStatus = async (): Promise<void> => {
     if (!profile) return
 
-    const loadApplications = async (): Promise<void> => {
-      setLoading(true)
-      try {
-        const data = await window.api.getApplicationStatus(profile.id)
-        setApplications(data)
-      } catch (err) {
-        console.error('申込み状況取得エラー:', err)
-        messageApi.error('申込み状況の取得に失敗しました')
-      } finally {
-        setLoading(false)
-      }
-    }
-    loadApplications()
-  }, [profile])
-
-  const handleCancel = async (key: string): Promise<void> => {
+    setLoading(true)
     try {
-      const success = await window.api.cancelApplication(profile?.id || '', key)
-      if (success) {
-        messageApi.success('申込みをキャンセルしました')
-        setApplications(applications.filter(app => app.key !== key))
-      } else {
-        throw new Error('キャンセルに失敗しました')
-      }
+      const data = await window.api.getApplicationStatus(profile.id)
+      setApplications(data)
     } catch (err) {
-      console.error('キャンセルエラー:', err)
-      messageApi.error(err instanceof Error ? err.message : 'キャンセルに失敗しました')
+      console.error('申込み状況取得エラー:', err)
+      messageApi.error('申込み状況の取得に失敗しました')
+    } finally {
+      setLoading(false)
     }
   }
 
-  const columns: ColumnsType<ApplicationStatus> = [
+  const memberColumns: ColumnsType<Member> = [
+    {
+      title: '氏名',
+      dataIndex: 'name',
+      key: 'name'
+    },
+    {
+      title: '登録番号',
+      dataIndex: 'id',
+      key: 'id'
+    },
+    {
+      title: 'パスワード',
+      dataIndex: 'password',
+      key: 'password'
+    }
+  ]
+
+  const commonColumns: ColumnsType<LotteryStatus | LotteryResultStatus | ReservationStatus> = [
     {
       title: '日付',
       dataIndex: 'date',
@@ -61,56 +69,87 @@ const StatusCheckPage = ({ profile }: StatusCheckPageProps): React.JSX.Element =
     },
     {
       title: '時間帯',
-      dataIndex: 'timeSlot',
-      key: 'timeSlot'
+      dataIndex: 'time',
+      key: 'time'
     },
     {
-      title: '状態',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => {
-        const statusMap = {
-          pending: { color: 'orange', text: '審査中' },
-          approved: { color: 'green', text: '当選' },
-          rejected: { color: 'red', text: '落選' },
-          cancelled: { color: 'gray', text: 'キャンセル' }
-        }
-        return <Tag color={statusMap[status].color}>{statusMap[status].text}</Tag>
-      }
+      title: 'コート',
+      dataIndex: 'court',
+      key: 'court'
     },
     {
-      title: 'コート番号',
-      dataIndex: 'courtNumber',
-      key: 'courtNumber',
-      render: (courtNumber) => courtNumber || '-'
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_, record) => (
-        <Space>
-          {record.status === 'pending' && (
-            <Button danger onClick={() => handleCancel(record.key)}>
-              キャンセル
-            </Button>
-          )}
-        </Space>
-      )
+      title: 'メンバー',
+      key: 'member',
+      render: (_, record) =>
+        `${record.member.name} (${record.member.id} : ${record.member.password})`
     }
   ]
+
+  let percent = progress ? Math.floor((progress.current / progress.total) * 100) : 0
+  if (loading) {
+    percent = Math.min(99, percent)
+  }
 
   return (
     <>
       {contextHolder}
       <div>
-        <Typography.Title level={2} style={{ marginBottom: '20px' }}>状況確認</Typography.Title>
-        <Table
-          columns={columns}
-          dataSource={applications}
-          loading={loading}
-          rowKey="key"
-          locale={{ emptyText: '申込み履歴がありません' }}
-        />
+        <Typography.Title level={2} style={{ marginBottom: '20px' }}>
+          状況確認
+        </Typography.Title>
+        <Card>
+          <Button type="primary" onClick={updateStatus} loading={loading} disabled={loading}>
+            状況確認を実行する
+          </Button>
+          {progress && (
+            <Space direction="vertical" style={{ marginTop: 16, width: '100%' }}>
+              <ProgressBar percent={percent} />
+              <Typography.Text>
+                {progress.message} ({progress.current}/{progress.total})
+              </Typography.Text>
+            </Space>
+          )}
+        </Card>
+        <Card title="エラー一覧(手動で確認してください)">
+          <Table
+            columns={memberColumns}
+            dataSource={applications?.errorMembers}
+            locale={{ emptyText: 'エラーがありません' }}
+            loading={loading}
+          />
+        </Card>
+        <Card title="抽選申込み状況">
+          <Table
+            columns={commonColumns}
+            dataSource={applications?.lotteries}
+            locale={{ emptyText: '申込み履歴がありません' }}
+            loading={loading}
+          />
+        </Card>
+        <Card title="未確定の抽選結果">
+          <Table
+            columns={commonColumns}
+            dataSource={applications?.lotteryResults}
+            locale={{ emptyText: '未確定の抽選結果がありません' }}
+            loading={loading}
+          />
+        </Card>
+        <Card title="予約状況">
+          <Table
+            columns={commonColumns}
+            dataSource={applications?.reservations}
+            locale={{ emptyText: '予約中のコートがありません' }}
+            loading={loading}
+          />
+        </Card>
+        <Card title="ログイン失敗メンバー">
+          <Table
+            columns={memberColumns}
+            dataSource={applications?.loginFailedMembers}
+            locale={{ emptyText: 'ログインに失敗したメンバーがありません' }}
+            loading={loading}
+          />
+        </Card>
       </div>
     </>
   )

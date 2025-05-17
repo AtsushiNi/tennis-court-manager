@@ -32,12 +32,30 @@ export interface Profile {
   name: string
 }
 
-export interface ApplicationStatus {
-  key: string
+export interface LotteryStatus {
+  member: Member
+  court: string
   date: string
-  timeSlot: string
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled'
-  courtNumber?: number
+  time: string
+}
+export interface LotteryResultStatus {
+  member: Member
+  court: string
+  date: string
+  time: string
+}
+export interface ReservationStatus {
+  member: Member
+  court: string
+  date: string
+  time: string
+}
+export interface ApplicationStatus {
+  errorMembers: Member[]
+  loginFailedMembers: Member[]
+  lotteries: LotteryStatus[]
+  lotteryResults: LotteryResultStatus[]
+  reservations: ReservationStatus[]
 }
 
 export interface LotteryTarget {

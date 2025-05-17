@@ -31,14 +31,8 @@ const MembersPage = ({ profile }: MembersPageProps): React.JSX.Element => {
     loadMembers()
   }, [profile])
 
-  // members変更時に自動保存
-  useEffect(() => {
-    if (!profile) return
-    handleSave()
-  }, [members])
-
   // メンバーデータ保存処理
-  const handleSave = async (): Promise<void> => {
+  const saveMembers = async (members: Member[]): Promise<void> => {
     if (!profile) {
       messageApi.warning('保存するメンバーデータがありません')
       return
@@ -57,8 +51,10 @@ const MembersPage = ({ profile }: MembersPageProps): React.JSX.Element => {
 
   // メンバー削除処理
   const handleDelete = (key: string): void => {
-    setMembers(members.filter((member) => member.key !== key))
+    const newMembers = members.filter((member) => member.key !== key)
+    setMembers(newMembers)
     messageApi.success('メンバーを削除しました')
+    saveMembers(newMembers)
   }
 
   // メンバー編集開始
@@ -87,20 +83,24 @@ const MembersPage = ({ profile }: MembersPageProps): React.JSX.Element => {
 
         if (editingMember) {
           // 編集処理
-          setMembers(
-            members.map((member) =>
-              member.key === editingMember.key ? { ...values, key: editingMember.key } : member
-            )
+          const newMembers = members.map((member) =>
+            member.key === editingMember.key ? { ...values, key: editingMember.key } : member
           )
+          setMembers(newMembers)
           messageApi.success('メンバーを更新しました')
+          saveMembers(newMembers)
         } else {
           // 追加処理
-          const newMember = {
-            ...values,
-            key: Date.now().toString()
-          }
-          setMembers([...members, newMember])
+          const newMembers = [
+            ...members,
+            {
+              ...values,
+              key: Date.now().toString()
+            }
+          ]
+          setMembers(newMembers)
           messageApi.success('メンバーを追加しました')
+          saveMembers(newMembers)
         }
         form.resetFields()
         setEditingMember(null)
@@ -196,6 +196,7 @@ const MembersPage = ({ profile }: MembersPageProps): React.JSX.Element => {
         ...item
       }))
       setMembers(formattedData)
+      saveMembers(formattedData)
       messageApi.success(`${jsonData.length}件のデータをインポートしました`)
     } catch (err) {
       console.error('Import failed:', err)
@@ -220,17 +221,62 @@ const MembersPage = ({ profile }: MembersPageProps): React.JSX.Element => {
     {
       title: '登録番号',
       dataIndex: 'id',
-      key: 'id'
+      key: 'id',
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm }) => (
+        <div style={{ padding: 8 }}>
+          <Input
+            placeholder="番号で検索"
+            value={selectedKeys[0]}
+            onChange={(e) => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={() => confirm()}
+            style={{ width: 188, marginBottom: 8, display: 'block' }}
+          />
+          <Button type="primary" onClick={() => confirm()} size="small" style={{ width: 90 }}>
+            検索
+          </Button>
+        </div>
+      ),
+      onFilter: (value, record) => record.id.toString().includes(value.toString())
     },
     {
       title: '氏名',
       dataIndex: 'name',
-      key: 'name'
+      key: 'name',
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm }) => (
+        <div style={{ padding: 8 }}>
+          <Input
+            placeholder="名前で検索"
+            value={selectedKeys[0]}
+            onChange={(e) => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={() => confirm()}
+            style={{ width: 188, marginBottom: 8, display: 'block' }}
+          />
+          <Button type="primary" onClick={() => confirm()} size="small" style={{ width: 90 }}>
+            検索
+          </Button>
+        </div>
+      ),
+      onFilter: (value, record) => record.name.includes(value.toString())
     },
     {
       title: 'パスワード',
       dataIndex: 'password',
-      key: 'password'
+      key: 'password',
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm }) => (
+        <div style={{ padding: 8 }}>
+          <Input
+            placeholder="パスワードで検索"
+            value={selectedKeys[0]}
+            onChange={(e) => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={() => confirm()}
+            style={{ width: 188, marginBottom: 8, display: 'block' }}
+          />
+          <Button type="primary" onClick={() => confirm()} size="small" style={{ width: 90 }}>
+            検索
+          </Button>
+        </div>
+      ),
+      onFilter: (value, record) => record.password.includes(value.toString())
     },
     {
       title: '操作',
@@ -250,7 +296,9 @@ const MembersPage = ({ profile }: MembersPageProps): React.JSX.Element => {
     <>
       {contextHolder}
       <div>
-        <Typography.Title level={2} style={{ marginBottom: '20px' }}>カード一覧</Typography.Title>
+        <Typography.Title level={2} style={{ marginBottom: '20px' }}>
+          カード一覧
+        </Typography.Title>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
           <Button type="primary" onClick={() => setIsModalOpen(true)}>
             メンバー追加

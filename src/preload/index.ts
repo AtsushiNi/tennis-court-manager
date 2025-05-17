@@ -14,6 +14,9 @@ const api = {
     ipcRenderer.invoke('run-lottery', profileId, lotteryTargets),
   getApplicationStatus: (profileId: string) =>
     ipcRenderer.invoke('get-application-status', profileId),
+  onGetApplicationStatusProgress: (callback: (progress: Progress) => void) => {
+    ipcRenderer.on('get-application-status-progress', (_, progress) => callback(progress))
+  },
   cancelApplication: (profileId: string, applicationKey: string) =>
     ipcRenderer.invoke('cancel-application', profileId, applicationKey),
   onUpdateLotteryResultProgress: (callback: (progress: Progress) => void) => {

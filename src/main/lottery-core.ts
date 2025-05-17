@@ -1,4 +1,14 @@
-import { Member, LotterySetting, LotteryInfo, LotteryResult, Progress } from '../common/types'
+import {
+  Member,
+  LotterySetting,
+  LotteryInfo,
+  LotteryResult,
+  Progress,
+  ApplicationStatus,
+  LotteryStatus,
+  LotteryResultStatus,
+  ReservationStatus
+} from '../common/types'
 import { FileConsoleLogger } from './util'
 import { VALID_COURT_TYPES } from '../common/constants'
 import { login } from './browserOperation'
@@ -113,18 +123,18 @@ export async function confirmLotteryResult(
   )
 
   // エラーになったメンバーに関して再実行する
-  const errorResults = lotteryResults.filter(result => result.status === 'error')
+  const errorResults = lotteryResults.filter((result) => result.status === 'error')
   const { browser, page } = await initBrowser()
   const logger = new FileConsoleLogger('confirm-lottery-result-retry.log')
   for (const [index, result] of errorResults.entries()) {
     onProgress({
-      current: index+1,
+      current: index + 1,
       total: errorResults.length,
       message: `${result.member.name} の抽選結果を再確認中...`
     })
     const newResult = await confirmLotteryResultForMember(page, result.member, logger)
     // 結果の書き換え
-    const resultIndex = lotteryResults.findIndex(r => r.member.id === result.member.id)
+    const resultIndex = lotteryResults.findIndex((r) => r.member.id === result.member.id)
     if (resultIndex !== -1) {
       if (newResult) {
         lotteryResults[resultIndex] = newResult
@@ -136,6 +146,108 @@ export async function confirmLotteryResult(
   await browser.close()
 
   return lotteryResults
+}
+
+/**
+ * 状況確認する
+ */
+export async function getApplicationStatus(
+  members: Member[],
+  onProgress: (progress: Progress) => void
+): Promise<ApplicationStatus> {
+  // 並行実行数
+  const CONCURRENCY = 5
+  // membersをCONCURRENCY数で分割
+  const memberChunks = Array.from({ length: CONCURRENCY }, (_, i) =>
+    members.filter((_, index) => index % CONCURRENCY === i)
+  )
+
+  const totalMembers = members.length
+  let processedCount = 0
+  const totalLoginFailedMembers: Member[] = []
+  const totalLotteryStatuses: LotteryStatus[] = []
+  const totalLotteryResultStatuses: LotteryResultStatus[] = []
+  const totalReservationStatuses: ReservationStatus[] = []
+  const errorMembers: Member[] = []
+
+  await Promise.all(
+    memberChunks.map(async (chunk, index) => {
+      // このプロセス固有のloggerを作成
+      const logFileName = `${index}_application-status.log`
+      const logger = new FileConsoleLogger(logFileName)
+
+      const { browser, page } = await initBrowser()
+
+      for (const member of chunk) {
+        processedCount++
+        onProgress({
+          current: processedCount,
+          total: totalMembers,
+          message: `${member.name} の状況を確認中...`
+        })
+        try {
+          const { isLoginFailed, lotteryStatuses, lotteryResultStatuses, reservationStatuses } =
+            await getStatusForMember(page, member, logger)
+          if (isLoginFailed) {
+            totalLoginFailedMembers.push(member)
+          }
+          if (lotteryStatuses) {
+            totalLotteryStatuses.push(...lotteryStatuses)
+          }
+          if (lotteryResultStatuses) {
+            totalLotteryResultStatuses.push(...lotteryResultStatuses)
+          }
+          if (reservationStatuses) {
+            totalReservationStatuses.push(...reservationStatuses)
+          }
+        } catch (error) {
+          logger.error(String(error))
+          errorMembers.push(member)
+        }
+      }
+
+      await browser.close()
+    })
+  )
+
+  // エラーになったメンバーに関して再実行する
+  const { browser, page } = await initBrowser()
+  const logger = new FileConsoleLogger('application-status-retry.log')
+  for (const [index, member] of errorMembers.entries()) {
+    onProgress({
+      current: index + 1,
+      total: errorMembers.length,
+      message: `${member.name} の状況を再確認中...`
+    })
+    try {
+      const { isLoginFailed, lotteryStatuses, lotteryResultStatuses, reservationStatuses } =
+        await getStatusForMember(page, member, logger)
+      if (isLoginFailed) {
+        totalLoginFailedMembers.push(member)
+      }
+      if (lotteryStatuses) {
+        totalLotteryStatuses.push(...lotteryStatuses)
+      }
+      if (lotteryResultStatuses) {
+        totalLotteryResultStatuses.push(...lotteryResultStatuses)
+      }
+      if (reservationStatuses) {
+        totalReservationStatuses.push(...reservationStatuses)
+      }
+      errorMembers.splice(errorMembers.indexOf(member), 1)
+    } catch (error) {
+      logger.error(String(error))
+    }
+  }
+  await browser.close()
+
+  return {
+    errorMembers,
+    loginFailedMembers: totalLoginFailedMembers,
+    lotteries: totalLotteryStatuses,
+    lotteryResults: totalLotteryResultStatuses,
+    reservations: totalReservationStatuses
+  }
 }
 
 async function confirmLotteryResultForMember(
@@ -177,6 +289,104 @@ async function confirmLotteryResultForMember(
   } catch (error) {
     logger.error(String(error))
     return createResult(member, 'error')
+  }
+}
+
+async function getStatusForMember(
+  page: Page,
+  member: Member,
+  logger: FileConsoleLogger
+): Promise<{
+  isLoginFailed: boolean
+  lotteryStatuses?: LotteryStatus[]
+  lotteryResultStatuses?: LotteryResultStatus[]
+  reservationStatuses?: ReservationStatus[]
+}> {
+  await logger.info(`=== 処理開始 ===`)
+  await logger.info(`対象メンバー: ${member.name}(id: ${member.id}, pw: ${member.password})`)
+
+  // ログイン
+  const loginSuccess = await login(page, logger, member.id, member.password)
+  if (!loginSuccess) {
+    return { isLoginFailed: true }
+  }
+
+  // 抽選申込み状況の確認
+  await page.getByRole('link', { name: '抽選 ⏷' }).click()
+  await page.getByRole('link', { name: '抽選申込みの確認' }).click()
+  await Promise.race([
+    page.waitForLoadState('networkidle', { timeout: 60000 }),
+    page.waitForLoadState('domcontentloaded', { timeout: 60000 })
+  ])
+
+  // テーブルから抽選申込み情報を取得
+  const lotteryTable = page.locator('#lottery-application table')
+  const rows = await lotteryTable.locator('tbody tr').all()
+
+  const lotteryStatuses: { member: Member, court: string; date: string; time: string }[] = []
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i]
+    const court = await row.locator('td:nth-child(4) span:nth-child(2)').innerText()
+    const date = (await row.locator('td:nth-child(5) span:nth-child(2)').innerText()).replace(
+      /\n/g,
+      ''
+    )
+    const time = (await row.locator('td:nth-child(6)').innerText())
+      .replace('時刻：', '')
+      .replace(/\n/g, '')
+    lotteryStatuses.push({ member, court, date, time })
+  }
+
+  // 未確定の抽選結果を確認
+  await page.getByRole('link', { name: '抽選 ⏷' }).click()
+  await page.getByRole('link', { name: '抽選結果' }).click()
+  await Promise.race([
+    page.waitForLoadState('networkidle', { timeout: 60000 }),
+    page.waitForLoadState('domcontentloaded', { timeout: 60000 })
+  ])
+
+  // テーブルから抽選結果を取得
+  const resultTable = page.locator('#lottery-result table')
+  const resultRows = await resultTable.locator('tbody tr').all()
+
+  const lotteryResultStatuses: { member: Member; court: string; date: string; time: string }[] = []
+  for (let i = 0; i < resultRows.length; i++) {
+    const row = resultRows[i]
+    const court = await row.locator('td:nth-child(1) span:nth-child(2)').innerText()
+    const date = (await row.locator('td:nth-child(2) span:nth-child(2)').innerText()).replace(
+      /\n/g,
+      ''
+    )
+    const time = (await row.locator('td:nth-child(3) label').innerText())
+      .replace('時刻：', '')
+      .replace(/\n/g, '')
+    lotteryResultStatuses.push({ member, court, date, time })
+  }
+
+  // 予約状況の確認
+  await page.getByRole('link', { name: '予約 ⏷' }).click()
+  await page.getByRole('link', { name: '予約の確認' }).click()
+  await Promise.race([
+    page.waitForLoadState('networkidle', { timeout: 60000 }),
+    page.waitForLoadState('domcontentloaded', { timeout: 60000 })
+  ])
+
+  // テーブルから予約状況を取得
+  const reservationRows = await page.locator('#rsvacceptlist > tbody > tr')
+  const reservationStatuses: { member: Member; court: string; date: string; time: string }[] = []
+  for (let i = 0; i < (await reservationRows.count()); i++) {
+    const row = reservationRows.nth(i)
+    const court = await row.locator('td:nth-child(4) span:nth-child(2)').innerText()
+    const date = await row.locator('td:nth-child(2) span:nth-child(2)').innerText()
+    const time = (await row.locator('td:nth-child(3)').innerText()).replace('時刻：', '')
+    reservationStatuses.push({ member, court, date, time })
+  }
+
+  return {
+    isLoginFailed: false,
+    lotteryStatuses,
+    lotteryResultStatuses,
+    reservationStatuses
   }
 }
 
@@ -240,7 +450,7 @@ async function getLotteryResults(
       const facility = firstRow
         .querySelector('td:nth-child(1) span:nth-child(2)')
         ?.textContent?.trim()
-      const date = firstRow.querySelector('td:nth-child(2) span.dow-saturday')?.textContent?.trim()
+      const date = firstRow.querySelector('td:nth-child(2) span:nth-child(2)')?.textContent?.trim()
       const time = firstRow
         .querySelector('td:nth-child(3) label')
         ?.textContent?.trim()

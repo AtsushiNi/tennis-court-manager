@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
-import { executeLottery, confirmLotteryResult } from './lottery-core'
+import { executeLottery, confirmLotteryResult, getApplicationStatus } from './lottery-core'
 import { FileConsoleLogger } from './util'
-import { LotterySetting, Progress } from '../common/types'
+import { ApplicationStatus, LotterySetting, Progress } from '../common/types'
 import { loadLotterySetting, saveLotterySetting, loadMembers } from './fileOperations'
 
 // Electronからlottery-core.tsを使うための関数
@@ -39,6 +39,27 @@ export function setupLotteryHandlers(mainWindow: Electron.BrowserWindow): void {
       return false
     }
   })
+
+  // 状況確認
+  ipcMain.handle(
+    'get-application-status',
+    async (_, profileId: string): Promise<ApplicationStatus | null> => {
+      try {
+        const members = await loadMembers(profileId)
+
+        const progressCallback = (progress: Progress): void => {
+          mainWindow.webContents.send('get-application-status-progress', progress)
+        }
+
+        const status = await getApplicationStatus(members, progressCallback)
+
+        return status
+      } catch (err: unknown) {
+        await logger.error(`状況確認エラー: ${err instanceof Error ? err.message : String(err)}`)
+        return null
+      }
+    }
+  )
 
   // 抽選結果確定
   ipcMain.handle('confirm-lottery-result', async (_, profileId: string) => {
