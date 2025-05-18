@@ -277,8 +277,8 @@ async function confirmLotteryResultForMember(
     await page.getByRole('button', { name: ' 確認' }).click()
     await page.waitForLoadState('networkidle')
     await page.getByLabel('利用人数').fill('4')
-    // await page.getByRole('button', { name: ' 確認' }).click()
-    // await page.waitForLoadState('networkidle')
+    await page.getByRole('button', { name: ' 確認' }).click()
+    await page.waitForLoadState('networkidle')
 
     // 結果データ処理
     await logger.info('当選')
