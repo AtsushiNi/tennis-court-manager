@@ -5,7 +5,8 @@ import {
   ApplicationStatus,
   Profile,
   Member,
-  SerializedLotteryTarget
+  SerializedLotteryTarget,
+  LotteryOperationResult
 } from 'src/common/types'
 
 declare global {
@@ -20,7 +21,7 @@ declare global {
       submitLotteryApplication: (
         profileId: string,
         lotteryTargets: SerializedLotteryTarget[]
-      ) => Promise<{ success: boolean; message?: string }>
+      ) => Promise<LotteryOperationResult[]>
       onSubmitLotteryProgress: (callback: (progress: Progress) => void) => void
       getApplicationStatus: (profileId: string) => Promise<ApplicationStatus>
       onGetApplicationStatusProgress: (callback: (progress: Progress) => void) => void

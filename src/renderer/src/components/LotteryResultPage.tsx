@@ -17,14 +17,9 @@ export default function LotteryResultPage({
   const [results, setResults] = useState<LotteryResult[]>([])
 
   useEffect(() => {
-    window.api.onUpdateLotteryResultProgress((progress) => {
-      console.log(progress)
+    return window.api.onUpdateLotteryResultProgress((progress) => {
       setProgress(progress)
     })
-
-    return () => {
-      window.api.onUpdateLotteryResultProgress(() => {})
-    }
   }, [])
 
   const handleConfirm = async (): Promise<void> => {

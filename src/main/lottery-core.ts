@@ -7,7 +7,8 @@ import {
   LotteryStatus,
   LotteryResultStatus,
   ReservationStatus,
-  LotteryTarget
+  LotteryTarget,
+  LotteryOperationResult
 } from '../common/types'
 import { FileConsoleLogger } from './util'
 import { VALID_COURT_TYPES } from '../common/constants'
@@ -27,7 +28,7 @@ export async function executeLottery(
   lotteryTargets: LotteryTarget[],
   members: Member[],
   onProgress: (progress: Progress) => void
-): Promise<boolean> {
+): Promise<LotteryOperationResult[]> {
   // ユーザーを予約コート・日時で均等に振り分け
   const lotteryInfoGroup: LotteryInfo[][] = Array.from({ length: lotteryTargets.length }, () => [])
   members.forEach((member: Member, i: number) => {
@@ -44,6 +45,7 @@ export async function executeLottery(
   })
 
   const failedLotteryInfo: LotteryInfo[] = []
+  const lotteryOperationResults: LotteryOperationResult[] = []
 
   // 各予約コート・日時ごとに抽選を並行処理
   await Promise.all(
@@ -76,8 +78,10 @@ export async function executeLottery(
           message: `${member.name} (${member.id}) の抽選処理中...`
         })
 
-        const isSuccess = await executeLotteryForMember(page, lotteryInfo, logger)
-        if (!isSuccess) {
+        const { status, successNumber } = await executeLotteryForMember(page, lotteryInfo, logger)
+        if (status === 'success') {
+          lotteryOperationResults.push({ member, lotteryTarget, successNumber, status: 'success' })
+        } else {
           failedLotteryInfo.push(lotteryInfo)
         }
       }
@@ -90,16 +94,34 @@ export async function executeLottery(
   const { browser, page } = await initBrowser()
   const logger = new FileConsoleLogger('execute-lottery-retry.log')
   for (const [index, lotteryInfo] of failedLotteryInfo.entries()) {
+    const { member, lotteryTarget } = lotteryInfo
     onProgress({
       current: index + 1,
       total: failedLotteryInfo.length,
-      message: `${lotteryInfo.member.name} の抽選処理を再実行中...`
+      message: `${member.name} の抽選処理を再実行中...`
     })
-    await executeLotteryForMember(page, lotteryInfo, logger)
+    const { status, successNumber } = await executeLotteryForMember(page, lotteryInfo, logger)
+    if (status === 'success') {
+      lotteryOperationResults.push({ member, lotteryTarget, successNumber, status: 'success' })
+    } else if (status === 'login-failed') {
+      lotteryOperationResults.push({
+        member,
+        lotteryTarget,
+        successNumber: 0,
+        status: 'login-failed'
+      })
+    } else {
+      lotteryOperationResults.push({
+        member,
+        lotteryTarget,
+        successNumber: 0,
+        status: 'error'
+      })
+    }
   }
   await browser.close()
 
-  return true
+  return lotteryOperationResults
 }
 
 /**
@@ -277,7 +299,7 @@ async function executeLotteryForMember(
   page: Page,
   lotteryInfo: LotteryInfo,
   logger: FileConsoleLogger
-): Promise<boolean> {
+): Promise<{ status: 'success' | 'login-failed' | 'error'; successNumber: 0 | 1 | 2 }> {
   const { member, lotteryTarget } = lotteryInfo
   await logger.info(
     `=== 処理開始: #${lotteryInfo.lotteryNo} ${member.name} (利用者番号: ${member.id}) ===`
@@ -288,7 +310,7 @@ async function executeLotteryForMember(
     const loginSuccess = await login(page, logger, member.id, member.password)
     if (!loginSuccess) {
       await logger.error('ログインに失敗しました')
-      return false
+      return { status: 'login-failed', successNumber: 0 }
     }
 
     // 抽選申込みページへ遷移
@@ -317,23 +339,29 @@ async function executeLotteryForMember(
     // 申込みを確定
     const remainNumber = await confirmLottery(page, logger, member.name)
 
-    // 2枠目の抽選申込み枠があれば、もう一度申込む
-    if (remainNumber) {
-      await page.getByRole('button', { name: '続けて申込み' }).click()
-
-      // 抽選申込みする枠を選択
-      await selectLotteryCell(page, logger, lotteryTarget.date, lotteryTarget.startHour)
-      await page.getByRole('button', { name: ' 申込み' }).click()
-
-      // 申込みを確定
-      await confirmLottery(page, logger, member.name)
+    if (remainNumber === -1) {
+      // 2枠とも使用済み
+      return { status: 'success', successNumber: 0 }
+    } else if (remainNumber === 0) {
+      // 1枠分を抽選実行
+      return { status: 'success', successNumber: 1 }
     }
+
+    // 2枠目の抽選申込み枠があれば、もう一度申込む
+    await page.getByRole('button', { name: '続けて申込み' }).click()
+
+    // 抽選申込みする枠を選択
+    await selectLotteryCell(page, logger, lotteryTarget.date, lotteryTarget.startHour)
+    await page.getByRole('button', { name: ' 申込み' }).click()
+
+    // 申込みを確定
+    await confirmLottery(page, logger, member.name)
+
+    return { status: 'success', successNumber: 2 }
   } catch (error) {
     logger.error(String(error))
-    return false
+    return { status: 'error', successNumber: 0 }
   }
-
-  return true
 }
 
 async function confirmLotteryResultForMember(

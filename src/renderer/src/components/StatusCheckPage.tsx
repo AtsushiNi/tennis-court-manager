@@ -22,7 +22,7 @@ const StatusCheckPage = ({ profile }: StatusCheckPageProps): React.JSX.Element =
   const [messageApi, contextHolder] = message.useMessage()
 
   useEffect(() => {
-    window.api.onGetApplicationStatusProgress((progress) => {
+    return window.api.onGetApplicationStatusProgress((progress) => {
       setProgress(progress)
     })
   })

@@ -9,15 +9,16 @@ import {
   Select,
   ConfigProvider,
   Typography,
-  Progress as ProgressBar
+  Progress as ProgressBar,
+  Table
 } from 'antd'
-import { Progress } from '../../../common/types'
+import { LotteryTarget, Progress } from '../../../common/types'
 import dayjs, { Dayjs } from 'dayjs'
 dayjs.locale('ja')
 import locale from 'antd/locale/ja_JP'
 import 'dayjs/locale/ja'
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons'
-import { Profile } from '../../../common/types'
+import { Profile, Member } from '../../../common/types'
 import { COURTS } from '../../../common/constants'
 
 interface LotteryApplicationValues {
@@ -40,9 +41,22 @@ const BulkLotteryApplicationPage = ({
   const [progress, setProgress] = useState<Progress | null>(null)
   const [loading, setLoading] = useState(false)
   const [hasCompleted, setHasCompleted] = useState(false)
+  const [errorStats, setErrorStats] = useState<
+    Array<{
+      type: string
+      target: LotteryTarget
+      member: Member
+    }>
+  >([])
+  const [courtStats, setCourtStats] = useState<
+    Array<{
+      target: { court: string; date: Dayjs; startHour: number }
+      succeed: number
+    }>
+  >([])
 
   useEffect(() => {
-    window.api.onSubmitLotteryProgress((progress) => {
+    return window.api.onSubmitLotteryProgress((progress) => {
       setProgress(progress)
     })
   }, [])
@@ -60,8 +74,42 @@ const BulkLotteryApplicationPage = ({
         court: COURTS.filter((court) => court.name === target.court)[0],
         date: target.date.format('YYYY-MM-DD')
       }))
-      await window.api.submitLotteryApplication(profile.id, serializedTargets)
+      const lotteryResults = await window.api.submitLotteryApplication(
+        profile.id,
+        serializedTargets
+      )
+
+      // エラー統計
+      const loginFailed = lotteryResults
+        .filter((r) => r.status === 'login-failed')
+        .map((result) => ({
+          type: 'ログイン失敗',
+          target: result.lotteryTarget,
+          member: result.member
+        }))
+      const errors = lotteryResults
+        .filter((r) => r.status === 'error')
+        .map((result) => ({
+          type: 'エラー',
+          target: result.lotteryTarget,
+          member: result.member
+        }))
+      setErrorStats([...loginFailed, ...errors])
+
+      // コート・時間ごとの成功数集計
+      const stats = values.lotteryTargets.map((target) => ({
+        target,
+        succeed: lotteryResults.filter(
+          (result) =>
+            result.status === 'success' &&
+            result.lotteryTarget.date.format('YYYY-MM-DD') === target.date.format('YYYY-MM-DD') &&
+            result.lotteryTarget.startHour === target.startHour &&
+            result.lotteryTarget.court.name === target.court
+        ).length
+      }))
+
       setHasCompleted(true)
+      setCourtStats(stats)
       messageApi.success('一括抽選申込みが完了しました')
     } catch (err) {
       console.error('一括抽選申込みエラー:', err)
@@ -179,9 +227,78 @@ const BulkLotteryApplicationPage = ({
             </Space>
           )}
           {hasCompleted && (
-            <Card style={{ marginTop: 16 }} title="申込み完了">
-              <Typography.Text>一括抽選申込みが正常に完了しました</Typography.Text>
-            </Card>
+            <>
+              <Card style={{ marginTop: 16 }} title="申込み完了">
+                <Typography.Text>一括抽選申込みが正常に完了しました</Typography.Text>
+              </Card>
+              <Card style={{ marginTop: 16 }} title="抽選結果統計">
+                <Typography.Text strong>全体統計:</Typography.Text>
+
+                <Table
+                  title={() => 'エラー統計'}
+                  bordered
+                  dataSource={errorStats}
+                  columns={[
+                    {
+                      title: '結果',
+                      dataIndex: 'type',
+                      key: 'type'
+                    },
+                    {
+                      title: 'メンバー',
+                      dataIndex: ['member', 'name'],
+                      key: 'member'
+                    },
+                    {
+                      title: '抽選対象',
+                      dataIndex: ['target'],
+                      key: 'target',
+                      render: (target) => `${target.court.name} ${target.startHour}:00 ~`
+                    }
+                  ]}
+                  style={{ marginTop: 16 }}
+                  pagination={false}
+                />
+
+                {courtStats.length > 0 && (
+                  <Table
+                    title={() => 'コート別成功数'}
+                    bordered
+                    dataSource={courtStats.map((stat) => ({
+                      key: `${stat.target.court}-${stat.target.date.format('YYYY-MM-DD')}-${stat.target.startHour}`,
+                      court: stat.target.court,
+                      date: stat.target.date.format('M/D(ddd)'),
+                      time: `${stat.target.startHour}:00~`,
+                      succeed: `${stat.succeed}件`
+                    }))}
+                    columns={[
+                      {
+                        title: 'コート',
+                        dataIndex: 'court',
+                        key: 'court'
+                      },
+                      {
+                        title: '日付',
+                        dataIndex: 'date',
+                        key: 'date'
+                      },
+                      {
+                        title: '時間',
+                        dataIndex: 'time',
+                        key: 'time'
+                      },
+                      {
+                        title: '成功数',
+                        dataIndex: 'succeed',
+                        key: 'succeed'
+                      }
+                    ]}
+                    style={{ marginTop: 16 }}
+                    pagination={false}
+                  />
+                )}
+              </Card>
+            </>
           )}
         </Form>
       </div>

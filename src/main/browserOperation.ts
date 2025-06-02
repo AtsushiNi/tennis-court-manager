@@ -193,7 +193,7 @@ export async function confirmLottery(
     // 2枠とも申込み済み
     logger.info(`${userName} は残り抽選申込み枠がないため、抽選申込みできません`)
     console.log(`${userName} は残り抽選申込み枠がないため、抽選申込みできません`)
-    return 0
+    return -1
   }
 
   let remainNumber = 0 // 残り申込み枠数

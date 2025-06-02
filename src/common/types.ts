@@ -19,6 +19,12 @@ export interface Progress {
   message: string
 }
 
+export interface LotteryOperationResult {
+  member: Member
+  lotteryTarget: LotteryTarget
+  successNumber: 0 | 1 | 2
+  status: 'success' | 'login-failed' | 'error'
+}
 export interface LotteryResult {
   member: Member
   facility?: string
