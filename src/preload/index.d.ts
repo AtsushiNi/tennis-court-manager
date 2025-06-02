@@ -1,11 +1,11 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
 import {
   LotteryResult,
-  LotteryTarget,
   Progress,
   ApplicationStatus,
   Profile,
-  Member
+  Member,
+  SerializedLotteryTarget
 } from 'src/common/types'
 
 declare global {
@@ -19,8 +19,9 @@ declare global {
       deleteProfile: (profileId: string) => Promise<boolean>
       submitLotteryApplication: (
         profileId: string,
-        lotteryTargets: LotteryTarget[]
+        lotteryTargets: SerializedLotteryTarget[]
       ) => Promise<{ success: boolean; message?: string }>
+      onSubmitLotteryProgress: (callback: (progress: Progress) => void) => void
       getApplicationStatus: (profileId: string) => Promise<ApplicationStatus>
       onGetApplicationStatusProgress: (callback: (progress: Progress) => void) => void
       cancelApplication: (profileId: string, applicationKey: string) => Promise<boolean>

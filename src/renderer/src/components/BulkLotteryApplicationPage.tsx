@@ -1,15 +1,31 @@
-import { Button, Form, DatePicker, message, Space, Select, ConfigProvider, Typography } from 'antd'
-import dayjs from 'dayjs'
+import { useState, useEffect } from 'react'
+import {
+  Button,
+  Card,
+  Form,
+  DatePicker,
+  message,
+  Space,
+  Select,
+  ConfigProvider,
+  Typography,
+  Progress as ProgressBar
+} from 'antd'
+import { Progress } from '../../../common/types'
+import dayjs, { Dayjs } from 'dayjs'
+dayjs.locale('ja')
 import locale from 'antd/locale/ja_JP'
 import 'dayjs/locale/ja'
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons'
-
-dayjs.locale('ja')
-import { LotteryTarget, Profile } from '../../../common/types'
+import { Profile } from '../../../common/types'
 import { COURTS } from '../../../common/constants'
 
 interface LotteryApplicationValues {
-  lotteryTargets: LotteryTarget[]
+  lotteryTargets: {
+    date: Dayjs
+    startHour: number
+    court: string
+  }[]
 }
 
 interface BulkLotteryApplicationPageProps {
@@ -21,6 +37,15 @@ const BulkLotteryApplicationPage = ({
 }: BulkLotteryApplicationPageProps): React.JSX.Element => {
   const [form] = Form.useForm()
   const [messageApi, contextHolder] = message.useMessage()
+  const [progress, setProgress] = useState<Progress | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [hasCompleted, setHasCompleted] = useState(false)
+
+  useEffect(() => {
+    window.api.onSubmitLotteryProgress((progress) => {
+      setProgress(progress)
+    })
+  }, [])
 
   const handleSubmit = async (values: LotteryApplicationValues): Promise<void> => {
     if (!profile) {
@@ -28,19 +53,36 @@ const BulkLotteryApplicationPage = ({
       messageApi.error('システムエラーが発生しました。管理者に連絡してください')
       return
     }
+    setLoading(true)
     try {
-      await window.api.submitLotteryApplication(profile.id, values.lotteryTargets)
+      const serializedTargets = values.lotteryTargets.map((target) => ({
+        ...target,
+        court: COURTS.filter((court) => court.name === target.court)[0],
+        date: target.date.format('YYYY-MM-DD')
+      }))
+      await window.api.submitLotteryApplication(profile.id, serializedTargets)
+      setHasCompleted(true)
+      messageApi.success('一括抽選申込みが完了しました')
     } catch (err) {
       console.error('一括抽選申込みエラー:', err)
       messageApi.error(err instanceof Error ? err.message : '一括抽選申込みに失敗しました')
+    } finally {
+      setLoading(false)
     }
+  }
+
+  let percent = progress ? Math.floor((progress.current / progress.total) * 100) : 0
+  if (loading) {
+    percent = Math.min(99, percent)
   }
 
   return (
     <ConfigProvider locale={locale}>
       {contextHolder}
       <div>
-        <Typography.Title level={2} style={{ marginBottom: '20px' }}>一括抽選申込み</Typography.Title>
+        <Typography.Title level={2} style={{ marginBottom: '20px' }}>
+          一括抽選申込み
+        </Typography.Title>
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Form.List name="lotteryTargets">
             {(fields, { add, remove }) => (
@@ -122,12 +164,25 @@ const BulkLotteryApplicationPage = ({
 
           <Form.Item>
             <Space>
-              <Button type="primary" htmlType="submit">
+              <Button type="primary" htmlType="submit" loading={loading} disabled={loading}>
                 一括申し込む
               </Button>
               <Button htmlType="reset">リセット</Button>
             </Space>
           </Form.Item>
+          {progress && (
+            <Space direction="vertical" style={{ marginTop: 16, width: '100%' }}>
+              <ProgressBar percent={percent} />
+              <Typography.Text>
+                {progress.message} ({progress.current}/{progress.total})
+              </Typography.Text>
+            </Space>
+          )}
+          {hasCompleted && (
+            <Card style={{ marginTop: 16 }} title="申込み完了">
+              <Typography.Text>一括抽選申込みが正常に完了しました</Typography.Text>
+            </Card>
+          )}
         </Form>
       </div>
     </ConfigProvider>

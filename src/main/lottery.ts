@@ -1,7 +1,14 @@
 import { ipcMain } from 'electron'
+import dayjs from 'dayjs'
 import { executeLottery, confirmLotteryResult, getApplicationStatus } from './lottery-core'
 import { FileConsoleLogger } from './util'
-import { ApplicationStatus, LotterySetting, Progress } from '../common/types'
+import {
+  ApplicationStatus,
+  LotterySetting,
+  LotteryTarget,
+  Progress,
+  SerializedLotteryTarget
+} from '../common/types'
 import { loadLotterySetting, saveLotterySetting, loadMembers } from './fileOperations'
 
 // Electronからlottery-core.tsを使うための関数
@@ -19,26 +26,37 @@ export function setupLotteryHandlers(mainWindow: Electron.BrowserWindow): void {
   })
 
   // 抽選実行
-  ipcMain.handle('run-lottery', async (_, profileId: string) => {
-    try {
-      // 抽選設定とメンバー情報を取得
-      const setting = await loadLotterySetting(profileId)
-      const members = await loadMembers(profileId)
+  ipcMain.handle(
+    'run-lottery',
+    async (_, profileId: string, lotteryTargets: SerializedLotteryTarget[]) => {
+      try {
+        // 文字列からDayjsオブジェクトに変換
+        const parsedTargets: LotteryTarget[] = lotteryTargets.map((target) => ({
+          date: dayjs(target.date),
+          startHour: target.startHour,
+          court: target.court
+        }))
 
-      if (!setting) {
-        throw new Error('抽選設定またはメンバー情報が読み込めませんでした')
-      }
+        // メンバー情報を取得
+        const members = await loadMembers(profileId)
 
-      // 抽選実行
-      const progressCallback = (progress: Progress): void => {
-        mainWindow.webContents.send('lottery-progress', progress)
+        if (!members) {
+          throw new Error('メンバー情報が読み込めませんでした')
+        }
+
+        // 抽選実行
+        const progressCallback = (progress: Progress): void => {
+          mainWindow.webContents.send('submit-lottery-progress', progress)
+        }
+        return await executeLottery(parsedTargets, members, progressCallback)
+      } catch (err: unknown) {
+        await logger.error(
+          `抽選実行エラー: ${err instanceof Error ? err.message + err.stack : String(err)}`
+        )
+        return false
       }
-      return await executeLottery(setting, members, progressCallback)
-    } catch (err: unknown) {
-      await logger.error(`抽選実行エラー: ${err instanceof Error ? err.message : String(err)}`)
-      return false
     }
-  })
+  )
 
   // 状況確認
   ipcMain.handle(

@@ -58,6 +58,12 @@ export interface ApplicationStatus {
   reservations: ReservationStatus[]
 }
 
+export interface SerializedLotteryTarget {
+  date: string
+  startHour: number
+  court: Court
+}
+
 export interface LotteryTarget {
   date: Dayjs
   startHour: number

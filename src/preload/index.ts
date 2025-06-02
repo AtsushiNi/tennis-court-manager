@@ -12,6 +12,9 @@ const api = {
   deleteProfile: (profileId: string) => ipcRenderer.invoke('delete-profile', profileId),
   submitLotteryApplication: (profileId: string, lotteryTargets: LotteryTarget[]) =>
     ipcRenderer.invoke('run-lottery', profileId, lotteryTargets),
+  onSubmitLotteryProgress: (callback: (progress: Progress) => void) => {
+    ipcRenderer.on('submit-lottery-progress', (_, progress) => callback(progress))
+  },
   getApplicationStatus: (profileId: string) =>
     ipcRenderer.invoke('get-application-status', profileId),
   onGetApplicationStatusProgress: (callback: (progress: Progress) => void) => {
