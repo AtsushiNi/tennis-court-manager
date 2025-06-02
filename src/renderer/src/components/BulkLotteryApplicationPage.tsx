@@ -61,6 +61,48 @@ const BulkLotteryApplicationPage = ({
     })
   }, [])
 
+  const handleRetry = async (errorRecord: {
+    type: string
+    target: LotteryTarget
+    member: Member
+  }): Promise<void> => {
+    if (!profile) {
+      messageApi.error('プロフィール情報がありません。再ログインしてください')
+      return
+    }
+    try {
+      const serializedTarget = {
+        ...errorRecord.target,
+        court: errorRecord.target.court,
+        date: errorRecord.target.date.format('YYYY-MM-DD')
+      }
+      const result = await window.api.submitLotteryApplication(
+        profile.id,
+        [serializedTarget],
+        false
+      )
+
+      if (result[0].status === 'success') {
+        messageApi.success('抽選の再実行に成功しました')
+        // 成功したら該当レコードのtypeを更新
+        setErrorStats(
+          errorStats.map((stat) =>
+            stat.member.id === errorRecord.member.id &&
+            stat.target.court.name === errorRecord.target.court.name &&
+            stat.target.startHour === errorRecord.target.startHour
+              ? { ...stat, type: '成功' }
+              : stat
+          )
+        )
+      } else {
+        messageApi.error('抽選の再実行に失敗しました')
+      }
+    } catch (err) {
+      console.error('抽選再実行エラー:', err)
+      messageApi.error(err instanceof Error ? err.message : '抽選の再実行に失敗しました')
+    }
+  }
+
   const handleSubmit = async (values: LotteryApplicationValues): Promise<void> => {
     if (!profile) {
       console.error('バグ: プロフィール情報がnullです。認証フローの確認が必要です。')
@@ -84,14 +126,14 @@ const BulkLotteryApplicationPage = ({
         .filter((r) => r.status === 'login-failed')
         .map((result) => ({
           type: 'ログイン失敗',
-          target: result.lotteryTarget,
+          target: { ...result.lotteryTarget, date: dayjs(result.lotteryTarget.date) },
           member: result.member
         }))
       const errors = lotteryResults
         .filter((r) => r.status === 'error')
         .map((result) => ({
           type: 'エラー',
-          target: result.lotteryTarget,
+          target: { ...result.lotteryTarget, date: dayjs(result.lotteryTarget.date) },
           member: result.member
         }))
       setErrorStats([...loginFailed, ...errors])
@@ -102,7 +144,7 @@ const BulkLotteryApplicationPage = ({
         succeed: lotteryResults.filter(
           (result) =>
             result.status === 'success' &&
-            result.lotteryTarget.date.format('YYYY-MM-DD') === target.date.format('YYYY-MM-DD') &&
+            result.lotteryTarget.date === target.date.format('YYYY-MM-DD') &&
             result.lotteryTarget.startHour === target.startHour &&
             result.lotteryTarget.court.name === target.court
         ).length
@@ -254,6 +296,15 @@ const BulkLotteryApplicationPage = ({
                       dataIndex: ['target'],
                       key: 'target',
                       render: (target) => `${target.court.name} ${target.startHour}:00 ~`
+                    },
+                    {
+                      title: 'アクション',
+                      key: 'action',
+                      render: (_, record) => (
+                        <Button type="link" onClick={() => handleRetry(record)}>
+                          再実行
+                        </Button>
+                      )
                     }
                   ]}
                   style={{ marginTop: 16 }}

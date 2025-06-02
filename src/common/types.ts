@@ -21,7 +21,7 @@ export interface Progress {
 
 export interface LotteryOperationResult {
   member: Member
-  lotteryTarget: LotteryTarget
+  lotteryTarget: SerializedLotteryTarget
   successNumber: 0 | 1 | 2
   status: 'success' | 'login-failed' | 'error'
 }

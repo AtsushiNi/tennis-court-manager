@@ -20,7 +20,8 @@ declare global {
       deleteProfile: (profileId: string) => Promise<boolean>
       submitLotteryApplication: (
         profileId: string,
-        lotteryTargets: SerializedLotteryTarget[]
+        lotteryTargets: SerializedLotteryTarget[],
+        handleProgress?: boolean
       ) => Promise<LotteryOperationResult[]>
       onSubmitLotteryProgress: (callback: (progress: Progress) => void) => void
       getApplicationStatus: (profileId: string) => Promise<ApplicationStatus>

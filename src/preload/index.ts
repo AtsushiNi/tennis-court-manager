@@ -10,8 +10,11 @@ const api = {
   loadProfiles: () => ipcRenderer.invoke('load-profiles'),
   saveProfiles: (profiles: Profile[]) => ipcRenderer.invoke('save-profiles', profiles),
   deleteProfile: (profileId: string) => ipcRenderer.invoke('delete-profile', profileId),
-  submitLotteryApplication: (profileId: string, lotteryTargets: LotteryTarget[]) =>
-    ipcRenderer.invoke('run-lottery', profileId, lotteryTargets),
+  submitLotteryApplication: (
+    profileId: string,
+    lotteryTargets: LotteryTarget[],
+    handleProgress?: boolean
+  ) => ipcRenderer.invoke('run-lottery', profileId, lotteryTargets, handleProgress),
   onSubmitLotteryProgress: (callback: (progress: Progress) => void) => {
     ipcRenderer.on('submit-lottery-progress', (_, progress) => callback(progress))
   },

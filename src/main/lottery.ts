@@ -28,7 +28,12 @@ export function setupLotteryHandlers(mainWindow: Electron.BrowserWindow): void {
   // 抽選実行
   ipcMain.handle(
     'run-lottery',
-    async (_, profileId: string, lotteryTargets: SerializedLotteryTarget[]) => {
+    async (
+      _,
+      profileId: string,
+      lotteryTargets: SerializedLotteryTarget[],
+      handleProgress: boolean = true
+    ) => {
       try {
         // 文字列からDayjsオブジェクトに変換
         const parsedTargets: LotteryTarget[] = lotteryTargets.map((target) => ({
@@ -46,7 +51,9 @@ export function setupLotteryHandlers(mainWindow: Electron.BrowserWindow): void {
 
         // 抽選実行
         const progressCallback = (progress: Progress): void => {
-          mainWindow.webContents.send('submit-lottery-progress', progress)
+          if (handleProgress) {
+            mainWindow.webContents.send('submit-lottery-progress', progress)
+          }
         }
         return await executeLottery(parsedTargets, members, progressCallback)
       } catch (err: unknown) {

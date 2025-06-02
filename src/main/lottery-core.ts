@@ -80,7 +80,16 @@ export async function executeLottery(
 
         const { status, successNumber } = await executeLotteryForMember(page, lotteryInfo, logger)
         if (status === 'success') {
-          lotteryOperationResults.push({ member, lotteryTarget, successNumber, status: 'success' })
+          const serializedLotteryTarget = {
+            ...lotteryTarget,
+            date: lotteryTarget.date.format('YYYY-MM-DD')
+          }
+          lotteryOperationResults.push({
+            member,
+            lotteryTarget: serializedLotteryTarget,
+            successNumber,
+            status: 'success'
+          })
         } else {
           failedLotteryInfo.push(lotteryInfo)
         }
@@ -101,19 +110,28 @@ export async function executeLottery(
       message: `${member.name} の抽選処理を再実行中...`
     })
     const { status, successNumber } = await executeLotteryForMember(page, lotteryInfo, logger)
+    const serializedLotteryTarget = {
+      ...lotteryTarget,
+      date: lotteryTarget.date.format('YYYY-MM-DD')
+    }
     if (status === 'success') {
-      lotteryOperationResults.push({ member, lotteryTarget, successNumber, status: 'success' })
+      lotteryOperationResults.push({
+        member,
+        lotteryTarget: serializedLotteryTarget,
+        successNumber,
+        status: 'success'
+      })
     } else if (status === 'login-failed') {
       lotteryOperationResults.push({
         member,
-        lotteryTarget,
+        lotteryTarget: serializedLotteryTarget,
         successNumber: 0,
         status: 'login-failed'
       })
     } else {
       lotteryOperationResults.push({
         member,
-        lotteryTarget,
+        lotteryTarget: serializedLotteryTarget,
         successNumber: 0,
         status: 'error'
       })
