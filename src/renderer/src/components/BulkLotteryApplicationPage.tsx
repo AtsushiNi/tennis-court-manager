@@ -79,7 +79,7 @@ const BulkLotteryApplicationPage = ({
       const result = await window.api.submitLotteryApplication(
         profile.id,
         [serializedTarget],
-        false
+        form.getFieldValue('hideBrowser')
       )
 
       if (result[0].status === 'success') {
@@ -118,7 +118,8 @@ const BulkLotteryApplicationPage = ({
       }))
       const lotteryResults = await window.api.submitLotteryApplication(
         profile.id,
-        serializedTargets
+        serializedTargets,
+        form.getFieldValue('hideBrowser')
       )
 
       // エラー統計
@@ -253,7 +254,7 @@ const BulkLotteryApplicationPage = ({
           </Form.List>
 
           <Form.Item>
-            <Space>
+            <Space align="center">
               <Button type="primary" htmlType="submit" loading={loading} disabled={loading}>
                 一括申し込む
               </Button>

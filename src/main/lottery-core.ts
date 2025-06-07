@@ -19,7 +19,11 @@ import {
   selectLotteryCell,
   confirmLottery
 } from './browserOperation'
-import { chromium, Page } from 'playwright'
+import { Page } from 'playwright'
+import { chromium } from 'playwright-extra'
+import stealth from 'puppeteer-extra-plugin-stealth'
+
+chromium.use(stealth())
 
 /*
  * 抽選申込み処理を全メンバー一括で実行する
@@ -52,7 +56,7 @@ export async function executeLottery(
     lotteryInfoGroup.map(async (lotteryInfoList, index: number) => {
       const { lotteryTarget } = lotteryInfoList[0]
       // このプロセス固有のloggerを作成
-      const logFileName = `${index}_${lotteryTarget.date.month() + 1}-${lotteryTarget.date.date()}${lotteryTarget.court.name.replace(/\s+/g, '_')}_${lotteryTarget.startHour}.log`
+      const logFileName = `${lotteryTarget.date.format('YYYYMMDD')}_${index}_${lotteryTarget.date.month() + 1}-${lotteryTarget.date.date()}_${lotteryTarget.court.name.replace(/\s+/g, '_')}_${lotteryTarget.startHour}.log`
       const logger = new FileConsoleLogger(logFileName)
 
       await logger.info(`=== 処理開始 ===`)

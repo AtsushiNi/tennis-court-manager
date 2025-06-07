@@ -211,7 +211,12 @@ export async function confirmLottery(
 
   // 確定
   await page.getByLabel('申込み番号').selectOption({ index: 1 })
-  // await page.getByRole('button', { name: ' 申込み' }).click()
+  await page.getByRole('button', { name: ' 申込み' }).click()
+  // reCAPCHAが表示された場合、timeoutの間に手動で対応
+  await page.waitForSelector('text="続けて申込み"', {
+    state: 'visible',
+    timeout: 60000
+  })
 
   return remainNumber
 }
