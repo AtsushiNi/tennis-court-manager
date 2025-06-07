@@ -76,11 +76,7 @@ const BulkLotteryApplicationPage = ({
         court: errorRecord.target.court,
         date: errorRecord.target.date.format('YYYY-MM-DD')
       }
-      const result = await window.api.submitLotteryApplication(
-        profile.id,
-        [serializedTarget],
-        form.getFieldValue('hideBrowser')
-      )
+      const result = await window.api.retryLottery(serializedTarget, errorRecord.member)
 
       if (result[0].status === 'success') {
         messageApi.success('抽選の再実行に成功しました')

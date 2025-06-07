@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import { Member, Profile, LotteryTarget, Progress } from '../common/types'
+import { Member, Profile, LotteryTarget, Progress, SerializedLotteryTarget } from '../common/types'
 
 // Custom APIs for renderer
 const api = {
@@ -18,6 +18,8 @@ const api = {
   onSubmitLotteryProgress: (callback: (progress: Progress) => void) => {
     ipcRenderer.on('submit-lottery-progress', (_, progress) => callback(progress))
   },
+  retryLottery: (lotteryTarget: SerializedLotteryTarget, member: Member) =>
+    ipcRenderer.invoke('retry-lottery', lotteryTarget, member),
   getApplicationStatus: (profileId: string) =>
     ipcRenderer.invoke('get-application-status', profileId),
   onGetApplicationStatusProgress: (callback: (progress: Progress) => void) => {

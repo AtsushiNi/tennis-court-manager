@@ -1,13 +1,19 @@
 import { ipcMain } from 'electron'
 import dayjs from 'dayjs'
-import { executeLottery, confirmLotteryResult, getApplicationStatus } from './lottery-core'
+import {
+  executeLotteries,
+  executeLottery,
+  confirmLotteryResult,
+  getApplicationStatus
+} from './lottery-core'
 import { FileConsoleLogger } from './util'
 import {
   ApplicationStatus,
   LotterySetting,
   LotteryTarget,
   Progress,
-  SerializedLotteryTarget
+  SerializedLotteryTarget,
+  Member
 } from '../common/types'
 import { loadLotterySetting, saveLotterySetting, loadMembers } from './fileOperations'
 
@@ -55,12 +61,29 @@ export function setupLotteryHandlers(mainWindow: Electron.BrowserWindow): void {
             mainWindow.webContents.send('submit-lottery-progress', progress)
           }
         }
-        return await executeLottery(parsedTargets, members, progressCallback)
+        return await executeLotteries(parsedTargets, members, progressCallback)
       } catch (err: unknown) {
         await logger.error(
           `抽選実行エラー: ${err instanceof Error ? err.message + err.stack : String(err)}`
         )
         return false
+      }
+    }
+  )
+
+  // 抽選再実行
+  ipcMain.handle(
+    'retry-lottery',
+    async (_, lotteryTarget: SerializedLotteryTarget, member: Member) => {
+      try {
+        const lotteryInfo = {
+          lotteryNo: 1, // 適当に置いていい
+          member,
+          lotteryTarget: { ...lotteryTarget, date: dayjs(lotteryTarget.date) }
+        }
+        return await executeLottery(lotteryInfo)
+      } catch (err) {
+        await logger.error(`抽選再実行エラー: ${String(err)}`)
       }
     }
   )

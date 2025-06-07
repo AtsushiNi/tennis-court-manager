@@ -24,6 +24,10 @@ declare global {
         handleProgress?: boolean
       ) => Promise<LotteryOperationResult[]>
       onSubmitLotteryProgress: (callback: (progress: Progress) => void) => void
+      retryLottery: (
+        lotteryTarget: SerializedLotteryTarget,
+        member: Member
+      ) => Promise<LotteryOperationResult>
       getApplicationStatus: (profileId: string) => Promise<ApplicationStatus>
       onGetApplicationStatusProgress: (callback: (progress: Progress) => void) => void
       cancelApplication: (profileId: string, applicationKey: string) => Promise<boolean>

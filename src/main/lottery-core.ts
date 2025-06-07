@@ -28,7 +28,7 @@ chromium.use(stealth())
 /*
  * 抽選申込み処理を全メンバー一括で実行する
  */
-export async function executeLottery(
+export async function executeLotteries(
   lotteryTargets: LotteryTarget[],
   members: Member[],
   onProgress: (progress: Progress) => void
@@ -144,6 +144,26 @@ export async function executeLottery(
   await browser.close()
 
   return lotteryOperationResults
+}
+
+export async function executeLottery(lotteryInfo: LotteryInfo): Promise<LotteryOperationResult> {
+  const lotteryTarget = lotteryInfo.lotteryTarget
+  const logger = new FileConsoleLogger('execute-lottery')
+  await logger.info(`=== 処理開始 ===`)
+  await logger.info(`対象コート: ${lotteryTarget.court.name} (${lotteryTarget.court.type})`)
+  await logger.info(`対象日: ${lotteryTarget.date.month() + 1}月${lotteryTarget.date.date()}日`)
+  await logger.info(`対象時間: ${lotteryTarget.startHour}:00~`)
+
+  const { browser, page } = await initBrowser()
+  const { status, successNumber } = await executeLotteryForMember(page, lotteryInfo, logger)
+  await browser.close()
+
+  return {
+    member: lotteryInfo.member,
+    lotteryTarget: { ...lotteryTarget, date: lotteryTarget.date.format('YYYY-MM-DD') },
+    successNumber,
+    status
+  }
 }
 
 /**
