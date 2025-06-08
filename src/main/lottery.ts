@@ -84,6 +84,7 @@ export function setupLotteryHandlers(mainWindow: Electron.BrowserWindow): void {
         return await executeLottery(lotteryInfo)
       } catch (err) {
         await logger.error(`抽選再実行エラー: ${String(err)}`)
+        return false
       }
     }
   )
