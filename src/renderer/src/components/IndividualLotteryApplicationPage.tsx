@@ -32,7 +32,7 @@ const IndividualLotteryApplicationPage = ({
       const applicationData = {
         memberId: values.memberId,
         name: values.name,
-        date: values.date,
+        date: values.date.format(),
         startHour,
         court: {
           name: 'コート1',
@@ -40,13 +40,18 @@ const IndividualLotteryApplicationPage = ({
         }
       }
 
-      const result = await window.api.submitLotteryApplication(profile.id, [applicationData])
+      const results = await window.api.submitLotteryApplication(profile.id, [applicationData])
+      const firstResult = results[0]
 
-      if (result.success) {
+      if (firstResult.successNumber > 0) {
         messageApi.success('個別抽選申込みが完了しました')
         form.resetFields()
       } else {
-        throw new Error(result.message || '個別抽選申込みに失敗しました')
+        const errorMessage =
+          firstResult.status === 'login-failed'
+            ? 'ログインに失敗しました'
+            : '個別抽選申込みに失敗しました'
+        throw new Error(errorMessage)
       }
     } catch (err) {
       console.error('個別抽選申込みエラー:', err)
@@ -58,7 +63,9 @@ const IndividualLotteryApplicationPage = ({
     <>
       {contextHolder}
       <div>
-        <Typography.Title level={2} style={{ marginBottom: '20px' }}>個別抽選申込み</Typography.Title>
+        <Typography.Title level={2} style={{ marginBottom: '20px' }}>
+          個別抽選申込み
+        </Typography.Title>
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Form.Item
             name="name"
