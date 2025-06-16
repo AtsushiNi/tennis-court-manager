@@ -16,6 +16,8 @@ asarUnpack:
   - "node_modules/.cache/ms-playwright/**"
 
 extraResources:
+  - from: "resources"
+    to: "resources"
   - from: "node_modules/playwright/.local-browsers"
     to: "playwright/.local-browsers"
   - from: "node_modules/playwright-core/.local-browsers"
