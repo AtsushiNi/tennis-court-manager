@@ -11,6 +11,17 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
+  - "node_modules/playwright/.local-browsers/**"
+  - "node_modules/playwright-core/.local-browsers/**"
+  - "node_modules/.cache/ms-playwright/**"
+
+extraResources:
+  - from: "node_modules/playwright/.local-browsers"
+    to: "playwright/.local-browsers"
+  - from: "node_modules/playwright-core/.local-browsers"
+    to: "playwright-core/.local-browsers"
+  - from: "node_modules/.cache/ms-playwright"
+    to: "ms-playwright"
 win:
   executableName: tennis-court-manager
 nsis:

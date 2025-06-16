@@ -19,6 +19,7 @@ import {
   selectLotteryCell,
   confirmLottery
 } from './browserOperation'
+import { join } from 'path'
 import { Page } from 'playwright'
 import { chromium } from 'playwright-extra'
 import stealth from 'puppeteer-extra-plugin-stealth'
@@ -553,7 +554,14 @@ async function initBrowser(): Promise<{
   browser: import('playwright').Browser
   page: import('playwright').Page
 }> {
-  const browser = await chromium.launch({ headless: false })
+  const executablePath = process.platform === 'win32'
+    ? join(process.resourcesPath, 'ms-playwright', 'chromium-1169', 'chrome-win', 'chrome.exe')
+    : undefined
+
+  const browser = await chromium.launch({ 
+    headless: false,
+    executablePath
+  })
   const context = await browser.newContext()
   const page = await context.newPage()
 
