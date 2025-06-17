@@ -9,9 +9,11 @@ import {
   saveProfiles,
   loadMembers,
   saveMembers,
-  deleteProfile
+  deleteProfile,
+  saveReservationSetting,
+  loadReservationSetting
 } from './fileOperations'
-import { Profile, Member } from '../common/types'
+import { Profile, Member, ReservationSetting } from '../common/types'
 
 function createWindow(): void {
   // Create the browser window.
@@ -72,6 +74,15 @@ app.whenReady().then(async () => {
     async (_, profileId: string, members: Member[]) => await saveMembers(profileId, members)
   )
   ipcMain.handle('delete-profile', async (_, profileId: string) => await deleteProfile(profileId))
+  ipcMain.handle(
+    'save-reservation-setting',
+    async (_, profileId: string, settings: ReservationSetting) => {
+      return await saveReservationSetting(profileId, settings)
+    }
+  )
+  ipcMain.handle('load-reservation-setting', async (_, profileId: string) => {
+    return await loadReservationSetting(profileId)
+  })
 
   createWindow()
 

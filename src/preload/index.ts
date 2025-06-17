@@ -1,6 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import { Member, Profile, LotteryTarget, Progress, SerializedLotteryTarget } from '../common/types'
+import {
+  Member,
+  Profile,
+  LotteryTarget,
+  Progress,
+  SerializedLotteryTarget,
+  ReservationSetting
+} from '../common/types'
 
 // Custom APIs for renderer
 const api = {
@@ -32,6 +39,12 @@ const api = {
   },
   confirmLotteryResult: (profileId: number) => {
     return ipcRenderer.invoke('confirm-lottery-result', profileId)
+  },
+  saveReservationSetting: (profileId: string, setting: ReservationSetting) => {
+    return ipcRenderer.invoke('save-reservation-setting', profileId, setting)
+  },
+  loadReservationSetting: (profileId: string) => {
+    return ipcRenderer.invoke('load-reservation-setting', profileId)
   }
 }
 

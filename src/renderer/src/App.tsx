@@ -6,7 +6,8 @@ import {
   TeamOutlined,
   DownOutlined,
   DeleteOutlined,
-  CheckCircleOutlined
+  CheckCircleOutlined,
+  ClockCircleOutlined
 } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
 import type { Profile } from '../../common/types'
@@ -15,6 +16,7 @@ import BulkLotteryApplicationPage from './components/BulkLotteryApplicationPage'
 import IndividualLotteryApplicationPage from './components/IndividualLotteryApplicationPage'
 import StatusCheckPage from './components/StatusCheckPage'
 import LotteryResultPage from './components/LotteryResultPage'
+import ReservationPage from './components/ReservationPage'
 
 const { Sider, Content } = Layout
 
@@ -22,7 +24,7 @@ function AppComponent(): React.JSX.Element {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null)
   const [currentPage, setCurrentPage] = useState<
-    'members' | 'bulk-lottery' | 'individual-lottery' | 'status' | 'result'
+    'members' | 'bulk-lottery' | 'individual-lottery' | 'status' | 'result' | 'reservation'
   >('members')
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -121,8 +123,8 @@ function AppComponent(): React.JSX.Element {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider collapsible>
-        <div className="logo-wrapper" style={{textAlign: 'center'}}>
+      <Sider collapsible width={220}>
+        <div className="logo-wrapper" style={{ textAlign: 'center' }}>
           <img
             className="logo"
             src="./src/assets/logo.svg"
@@ -161,7 +163,9 @@ function AppComponent(): React.JSX.Element {
           selectedKeys={[currentPage]}
           style={{ padding: 8 }}
           onSelect={({ key }) =>
-            setCurrentPage(key as 'members' | 'bulk-lottery' | 'individual-lottery' | 'status' | 'result')
+            setCurrentPage(
+              key as 'members' | 'bulk-lottery' | 'individual-lottery' | 'status' | 'result'
+            )
           }
         >
           <Menu.Item key="members" icon={<UserOutlined />}>
@@ -177,6 +181,9 @@ function AppComponent(): React.JSX.Element {
           <Menu.Item key="result" icon={<CheckCircleOutlined />}>
             抽選結果確定
           </Menu.Item>
+          <Menu.Item key="reservation" icon={<ClockCircleOutlined />}>
+            空きコート自動予約
+          </Menu.Item>
         </Menu>
       </Sider>
       <Layout>
@@ -190,11 +197,12 @@ function AppComponent(): React.JSX.Element {
           )}
           {currentPage === 'status' && <StatusCheckPage profile={currentProfile} />}
           {currentPage === 'result' && (
-            <LotteryResultPage 
-              profile={currentProfile} 
-              onNavigateToStatus={() => setCurrentPage('status')} 
+            <LotteryResultPage
+              profile={currentProfile}
+              onNavigateToStatus={() => setCurrentPage('status')}
             />
           )}
+          {currentPage === 'reservation' && <ReservationPage profile={currentProfile} />}
         </Content>
       </Layout>
       <Modal

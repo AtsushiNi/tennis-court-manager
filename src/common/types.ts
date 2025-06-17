@@ -4,7 +4,7 @@ export interface Court {
   type: 'テニス（人工芝）' | 'テニス（ハード）'
 }
 
-export type CourtType = Court['type'];
+export type CourtType = Court['type']
 
 export interface Member {
   key: string
@@ -85,4 +85,16 @@ export interface LotteryInfo {
 export interface LotterySetting {
   profileId: string
   targets: LotteryTarget[]
+}
+
+export interface ReservationSetting {
+  member: Member
+  days: number
+  daysOfWeek: string[]
+  courts: Court[]
+  interval: number
+  weekdayTimes: [string, string]
+  saturdayTimes: [string, string]
+  sundayTimes: [string, string]
+  holidayTimes: [string, string]
 }

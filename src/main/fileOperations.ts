@@ -1,7 +1,7 @@
 import fs from 'fs/promises'
 import path from 'path'
 import { app } from 'electron'
-import { Member, LotterySetting, Profile } from '../common/types'
+import { Member, LotterySetting, Profile, ReservationSetting } from '../common/types'
 import { FileConsoleLogger } from './util'
 
 const DATA_DIR = app.getPath('userData')
@@ -142,5 +142,44 @@ export async function saveLotterySetting(
       `Failed to save lottery setting: ${err instanceof Error ? err.message : String(err)}`
     )
     return false
+  }
+}
+
+/**
+ * 予約設定の保存
+ */
+export async function saveReservationSetting(
+  profileId: string,
+  setting: ReservationSetting
+): Promise<boolean> {
+  const settingFile = path.join(DATA_DIR, `reservation-setting_${profileId}.json`)
+  try {
+    await fs.writeFile(settingFile, JSON.stringify(setting, null, 2))
+    return true
+  } catch (err: unknown) {
+    logger.error(
+      `Failed to save reservation setting: ${err instanceof Error ? err.message : String(err)}`
+    )
+    return false
+  }
+}
+
+/**
+ * 予約設定の読み込み
+ */
+export async function loadReservationSetting(profileId: string): Promise<ReservationSetting | null> {
+  const settingFile = path.join(DATA_DIR, `reservation-setting_${profileId}.json`)
+  try {
+    await fs.access(settingFile)
+    const data = await fs.readFile(settingFile, 'utf-8')
+    return JSON.parse(data) as ReservationSetting
+  } catch (err: unknown) {
+    if (err instanceof Error && 'code' in err && err.code === 'ENOENT') {
+      return null
+    }
+    logger.error(
+      `Failed to load reservation setting: ${err instanceof Error ? err.message : String(err)}`
+    )
+    return null
   }
 }

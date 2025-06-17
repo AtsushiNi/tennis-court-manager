@@ -6,7 +6,8 @@ import {
   Profile,
   Member,
   SerializedLotteryTarget,
-  LotteryOperationResult
+  LotteryOperationResult,
+  ReservationSetting
 } from 'src/common/types'
 
 declare global {
@@ -33,6 +34,8 @@ declare global {
       cancelApplication: (profileId: string, applicationKey: string) => Promise<boolean>
       onUpdateLotteryResultProgress: (callback: (progress: Progress) => void) => void
       confirmLotteryResult: (profileId: string) => Promise<LotteryResult[]>
+      saveReservationSetting: (profileId: string, setting: ReservationSetting) => Promise<boolean>
+      loadReservationSetting: (profileId: string) => Promise<ReservationSetting>
     }
   }
 }
