@@ -554,11 +554,12 @@ async function initBrowser(): Promise<{
   browser: import('playwright').Browser
   page: import('playwright').Page
 }> {
-  const executablePath = process.platform === 'win32'
-    ? join(process.resourcesPath, 'ms-playwright', 'chromium-1169', 'chrome-win', 'chrome.exe')
-    : undefined
+  const executablePath =
+    process.platform === 'win32'
+      ? join(process.resourcesPath, 'playwright-browser', 'chrome.exe')
+      : undefined
 
-  const browser = await chromium.launch({ 
+  const browser = await chromium.launch({
     headless: false,
     executablePath
   })
