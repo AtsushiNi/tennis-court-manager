@@ -215,7 +215,7 @@ export async function confirmLottery(
   // reCAPCHAが表示された場合、timeoutの間に手動で対応
   await page.waitForSelector('text="続けて申込み"', {
     state: 'visible',
-    timeout: 60000
+    timeout: 5 * 60 * 1000
   })
 
   return remainNumber
