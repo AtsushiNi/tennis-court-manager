@@ -9,3 +9,19 @@
 - 抽選申込みの実装
 - 個別申込みの実装
 - GitHub Actionsでのビルド
+
+## Windows用ビルド
+1. npmライブラリのインストール
+```
+pnpm install
+```
+
+2. ビルド
+PlayWrightのchromiumをインストール・プロジェクト内にコピー・ビルドする
+管理者権限のGit Bashで以下を実行
+```
+pnpm run build:win
+```
+
+3. リリース
+GitHubでリリースを作成して、`dist`フォルダに生成されたexeファイルを添付
