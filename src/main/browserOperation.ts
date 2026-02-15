@@ -1,7 +1,45 @@
 import { Locator, Page } from 'playwright'
 import { Dayjs } from 'dayjs'
+import { join } from 'path'
 import { FileConsoleLogger, toFullWidthNumber } from './util'
 import { Court } from '../common/types'
+import { chromium } from 'playwright-extra'
+import stealth from 'puppeteer-extra-plugin-stealth'
+import { actRandom } from './randomActions'
+
+chromium.use(stealth())
+
+/**
+ * ブラウザを初期化する
+ */
+export async function initBrowser(): Promise<{
+  browser: import('playwright').Browser
+  page: import('playwright').Page
+}> {
+  const executablePath =
+    process.platform === 'win32'
+      ? join(process.resourcesPath, 'playwright-browser', 'chrome.exe')
+      : undefined
+
+  const browser = await chromium.launch({
+    headless: false,
+    executablePath
+  })
+  const context = await browser.newContext()
+  const page = await context.newPage()
+
+  // 自動入力関連のリクエストを抑制
+  await page.setExtraHTTPHeaders({
+    'User-Agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+  })
+
+  page.on('dialog', async (dialog: import('playwright').Dialog) => {
+    await dialog.accept()
+  })
+
+  return { browser, page }
+}
 
 /**
  * システムにログインする
@@ -19,6 +57,33 @@ export async function login(
   })
   logger.info('予約サイトにアクセスしました')
 
+  // 施設予約システムにアクセスできていない場合は再リロードを繰り返す
+  let retryCount = 0
+  const maxRetries = 30 // 最大リトライ回数
+
+  while (retryCount < maxRetries) {
+    const noticeText = await page.getByText(/施設予約システムからのお知らせ/).count()
+    if (noticeText === 0) {
+      break // お知らせが表示されていない場合はループを抜ける
+    }
+
+    logger.info(
+      `施設予約システムからのお知らせが表示されているため、再リロードします (${retryCount + 1}/${maxRetries})`
+    )
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await page.waitForLoadState('networkidle', { timeout: 60000 })
+    await page.waitForSelector('#loadmsg', { state: 'hidden', timeout: 30000 })
+
+    // 1秒待機
+    await page.waitForTimeout(1000)
+    retryCount++
+  }
+
+  if (retryCount > 0) {
+    logger.info(`再リロード完了 (${retryCount}回実行)`)
+  }
+  await actRandom(page, logger)
+
   // ログインボタンをクリック
   await page.waitForLoadState('networkidle', { timeout: 60000 })
   await page.waitForSelector('#loadmsg', { state: 'hidden', timeout: 30000 })
@@ -32,6 +97,7 @@ export async function login(
   // パスワードを入力
   await page.getByRole('textbox', { name: 'パスワード' }).fill(password)
   logger.info('パスワードを入力')
+  await actRandom(page, logger)
 
   // ログインボタンをクリック
   await page.getByRole('button', { name: ' ログイン' }).click()
@@ -73,12 +139,14 @@ export async function navigateToLotteryPage(page: Page, logger: FileConsoleLogge
   // 抽選メニューをクリック
   await page.getByRole('link', { name: '抽選 ⏷' }).click()
   logger.info('抽選メニューをクリック')
+  await actRandom(page, logger)
 
   // 抽選申込みリンクをクリック
   await page.getByRole('link', { name: '抽選申込み', exact: true }).click()
   logger.info('抽選申込みをクリック')
 
   logger.info('')
+  await actRandom(page, logger)
 }
 
 /**
@@ -93,11 +161,13 @@ export async function registerFavoriteCourt(
   logger.info('お気に入り登録が見つかりませんでした')
   await page.getByRole('link', { name: '抽選 ⏷' }).click()
   logger.info('抽選メニューをクリック')
+  await actRandom(page, logger)
 
   // 抽選申込みお気に入り登録をクリック
   await page.getByRole('link', { name: '抽選申込みお気に入り登録' }).click()
   await page.waitForLoadState('networkidle')
   logger.info('抽選申込みお気に入り登録をクリック')
+  await actRandom(page, logger)
 
   // 登録名を入力
   await page.getByRole('textbox', { name: 'お気に入り名 必須' }).fill(court.name)
@@ -118,12 +188,14 @@ export async function registerFavoriteCourt(
     (select: HTMLSelectElement) => select.options[select.selectedIndex].textContent?.trim() || ''
   )
   logger.info(`施設を選択: ${selectedFacility}`)
+  await actRandom(page, logger)
 
   // 設定ボタンをクリック
   await page.getByRole('button', { name: ' 設定' }).click()
   logger.info('設定ボタンをクリック')
 
   logger.info('')
+  await actRandom(page, logger)
 }
 
 /**
@@ -136,6 +208,7 @@ export async function selectLotteryCell(
   startHour: number
 ): Promise<void> {
   // 対象日が表示されるまで翌週ボタンをクリック
+  await page.waitForSelector('th[id^="usedate-theader-"]', { timeout: 10000 })
   while (
     !(await page
       .locator('th[id^="usedate-theader-"]')
@@ -148,6 +221,7 @@ export async function selectLotteryCell(
       page.waitForSelector('#usedate-loading', { state: 'hidden', timeout: 30000 }),
       page.waitForLoadState('networkidle')
     ])
+    await actRandom(page, logger)
 
     await page.getByRole('button', { name: '翌週' }).click({ force: true })
     await page.waitForSelector('#usedate-loading', { state: 'hidden', timeout: 30000 })
@@ -160,6 +234,7 @@ export async function selectLotteryCell(
     toFullWidthNumber(startHour),
     `${date.date()}日`
   )
+  await actRandom(page, logger)
 
   await cell.click()
 
@@ -211,11 +286,12 @@ export async function confirmLottery(
 
   // 確定
   await page.getByLabel('申込み番号').selectOption({ index: 1 })
+  await actRandom(page, logger)
   await page.getByRole('button', { name: ' 申込み' }).click()
   // reCAPCHAが表示された場合、timeoutの間に手動で対応
   await page.waitForSelector('text="続けて申込み"', {
     state: 'visible',
-    timeout: 5 * 60 * 1000
+    timeout: 5 * 60 * 1000 // 5min
   })
 
   return remainNumber

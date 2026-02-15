@@ -13,18 +13,14 @@ import {
 import { FileConsoleLogger } from './util'
 import { VALID_COURT_TYPES } from '../common/constants'
 import {
+  initBrowser,
   login,
   navigateToLotteryPage,
   registerFavoriteCourt,
   selectLotteryCell,
   confirmLottery
 } from './browserOperation'
-import { join } from 'path'
 import { Page } from 'playwright'
-import { chromium } from 'playwright-extra'
-import stealth from 'puppeteer-extra-plugin-stealth'
-
-chromium.use(stealth())
 
 /*
  * 抽選申込み処理を全メンバー一括で実行する
@@ -105,8 +101,8 @@ export async function executeLotteries(
   )
 
   // エラーになったメンバーに関して再実行する
-  const { browser, page } = await initBrowser()
   const logger = new FileConsoleLogger('execute-lottery-retry.log')
+  const { browser, page } = await initBrowser()
   for (const [index, lotteryInfo] of failedLotteryInfo.entries()) {
     const { member, lotteryTarget } = lotteryInfo
     onProgress({
@@ -212,8 +208,8 @@ export async function confirmLotteryResult(
 
   // エラーになったメンバーに関して再実行する
   const errorResults = lotteryResults.filter((result) => result.status === 'error')
-  const { browser, page } = await initBrowser()
   const logger = new FileConsoleLogger('confirm-lottery-result-retry.log')
+  const { browser, page } = await initBrowser()
   for (const [index, result] of errorResults.entries()) {
     onProgress({
       current: index + 1,
@@ -299,8 +295,8 @@ export async function getApplicationStatus(
   )
 
   // エラーになったメンバーに関して再実行する
-  const { browser, page } = await initBrowser()
   const logger = new FileConsoleLogger('application-status-retry.log')
+  const { browser, page } = await initBrowser()
   for (const [index, member] of errorMembers.entries()) {
     onProgress({
       current: index + 1,
@@ -545,38 +541,6 @@ async function getStatusForMember(
     lotteryResultStatuses,
     reservationStatuses
   }
-}
-
-/**
- * ブラウザを初期化する
- */
-async function initBrowser(): Promise<{
-  browser: import('playwright').Browser
-  page: import('playwright').Page
-}> {
-  const executablePath =
-    process.platform === 'win32'
-      ? join(process.resourcesPath, 'playwright-browser', 'chrome.exe')
-      : undefined
-
-  const browser = await chromium.launch({
-    headless: false,
-    executablePath
-  })
-  const context = await browser.newContext()
-  const page = await context.newPage()
-
-  // 自動入力関連のリクエストを抑制
-  await page.setExtraHTTPHeaders({
-    'User-Agent':
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-  })
-
-  page.on('dialog', async (dialog: import('playwright').Dialog) => {
-    await dialog.accept()
-  })
-
-  return { browser, page }
 }
 
 /**
