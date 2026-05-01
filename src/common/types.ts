@@ -64,6 +64,22 @@ export interface ApplicationStatus {
   reservations: ReservationStatus[]
 }
 
+export interface AccountExpirationItem {
+  member: Member
+  /** YYYY-MM-DD 等。取得できない場合は undefined */
+  expirationDate?: string
+  status: 'success' | 'login-failed' | 'error'
+}
+
+export interface AccountExpirationResult {
+  /** メンバーごとの結果（成功/失敗含む） */
+  items: AccountExpirationItem[]
+  /** ログイン失敗したメンバー一覧 */
+  loginFailedMembers: Member[]
+  /** エラーで期限取得できなかったメンバー一覧（リトライ後も残ったもの） */
+  errorMembers: Member[]
+}
+
 export interface SerializedLotteryTarget {
   date: string
   startHour: number

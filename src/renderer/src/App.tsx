@@ -7,7 +7,8 @@ import {
   DownOutlined,
   DeleteOutlined,
   CheckCircleOutlined,
-  ClockCircleOutlined
+  ClockCircleOutlined,
+  CalendarOutlined
 } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
 import type { Profile } from '../../common/types'
@@ -17,6 +18,7 @@ import IndividualLotteryApplicationPage from './components/IndividualLotteryAppl
 import StatusCheckPage from './components/StatusCheckPage'
 import LotteryResultPage from './components/LotteryResultPage'
 import ReservationPage from './components/ReservationPage'
+import AccountExpirationPage from './components/AccountExpirationPage'
 
 const { Sider, Content } = Layout
 
@@ -24,7 +26,13 @@ function AppComponent(): React.JSX.Element {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null)
   const [currentPage, setCurrentPage] = useState<
-    'members' | 'bulk-lottery' | 'individual-lottery' | 'status' | 'result' | 'reservation'
+    | 'members'
+    | 'bulk-lottery'
+    | 'individual-lottery'
+    | 'status'
+    | 'result'
+    | 'reservation'
+    | 'account-expiration'
   >('members')
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -164,7 +172,14 @@ function AppComponent(): React.JSX.Element {
           style={{ padding: 8 }}
           onSelect={({ key }) =>
             setCurrentPage(
-              key as 'members' | 'bulk-lottery' | 'individual-lottery' | 'status' | 'result'
+              key as
+                | 'members'
+                | 'bulk-lottery'
+                | 'individual-lottery'
+                | 'status'
+                | 'result'
+                | 'reservation'
+                | 'account-expiration'
             )
           }
         >
@@ -183,6 +198,9 @@ function AppComponent(): React.JSX.Element {
           </Menu.Item>
           <Menu.Item key="reservation" icon={<ClockCircleOutlined />}>
             空きコート自動予約
+          </Menu.Item>
+          <Menu.Item key="account-expiration" icon={<CalendarOutlined />}>
+            有効期限一覧
           </Menu.Item>
         </Menu>
       </Sider>
@@ -203,6 +221,9 @@ function AppComponent(): React.JSX.Element {
             />
           )}
           {currentPage === 'reservation' && <ReservationPage profile={currentProfile} />}
+          {currentPage === 'account-expiration' && (
+            <AccountExpirationPage profile={currentProfile} />
+          )}
         </Content>
       </Layout>
       <Modal

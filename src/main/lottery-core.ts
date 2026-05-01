@@ -8,7 +8,9 @@ import {
   LotteryResultStatus,
   ReservationStatus,
   LotteryTarget,
-  LotteryOperationResult
+  LotteryOperationResult,
+  AccountExpirationItem,
+  AccountExpirationResult
 } from '../common/types'
 import { FileConsoleLogger } from './util'
 import { VALID_COURT_TYPES } from '../common/constants'
@@ -18,7 +20,9 @@ import {
   navigateToLotteryPage,
   registerFavoriteCourt,
   selectLotteryCell,
-  confirmLottery
+  confirmLottery,
+  logout,
+  getAccountExpiration
 } from './browserOperation'
 import { Page } from 'playwright'
 
@@ -331,6 +335,128 @@ export async function getApplicationStatus(
     lotteries: totalLotteryStatuses,
     lotteryResults: totalLotteryResultStatuses,
     reservations: totalReservationStatuses
+  }
+}
+
+/**
+ * アカウントの有効期限（等）を全メンバー分取得する
+ */
+export async function getAccountExpirations(
+  members: Member[],
+  onProgress: (progress: Progress) => void
+): Promise<AccountExpirationResult> {
+  const CONCURRENCY = 4
+
+  const memberChunks = Array.from({ length: CONCURRENCY }, (_, i) =>
+    members.filter((_, index) => index % CONCURRENCY === i)
+  )
+
+  const totalMembers = members.length
+  let processedCount = 0
+
+  const items: AccountExpirationItem[] = []
+  const loginFailedMembers: Member[] = []
+  const errorMembers: Member[] = []
+
+  await Promise.all(
+    memberChunks.map(async (chunk, index) => {
+      const logFileName = `${index}_account-expiration.log`
+      const logger = new FileConsoleLogger(logFileName)
+
+      const { browser, page } = await initBrowser()
+
+      for (const member of chunk) {
+        processedCount++
+        onProgress({
+          current: processedCount,
+          total: totalMembers,
+          message: `${member.name} の有効期限を確認中...`
+        })
+
+        try {
+          const loginSuccess = await login(page, logger, member.id, member.password, false)
+          if (!loginSuccess) {
+            loginFailedMembers.push(member)
+            items.push({ member, status: 'login-failed' })
+            continue
+          }
+
+          const accountExpiration = await getAccountExpiration(page)
+          logger.info(`有効期限：${accountExpiration}`)
+          items.push({
+            member,
+            status: 'success',
+            expirationDate: accountExpiration
+          })
+
+          // セッション持ち越しを避ける（サイト仕様で不要なら後で外せる）
+          try {
+            await logout(page, logger)
+          } catch {
+            // logout失敗は致命ではないので握りつぶす（次のloginで復帰することが多い）
+          }
+        } catch (error) {
+          await logger.error(String(error))
+          errorMembers.push(member)
+          items.push({ member, status: 'error' })
+        }
+      }
+
+      await browser.close()
+    })
+  )
+
+  // エラーになったメンバーに関して再実行する
+  const logger = new FileConsoleLogger('account-expiration-retry.log')
+  const { browser, page } = await initBrowser()
+  // retry中に errorMembers を splice するので、走査対象はコピーを使う
+  const retryMembers = [...errorMembers]
+  for (const [index, member] of retryMembers.entries()) {
+    onProgress({
+      current: index + 1,
+      total: retryMembers.length,
+      message: `${member.name} の有効期限を再確認中...`
+    })
+
+    try {
+      const loginSuccess = await login(page, logger, member.id, member.password, false)
+      if (!loginSuccess) {
+        loginFailedMembers.push(member)
+        // items上の該当レコードを書き換え
+        const i = items.findIndex((x) => x.member.id === member.id)
+        if (i !== -1) items[i] = { member, status: 'login-failed' }
+        continue
+      }
+
+      const i = items.findIndex((x) => x.member.id === member.id)
+      if (i !== -1) {
+        const accountExpiration = await getAccountExpiration(page)
+        logger.info(`有効期限：${accountExpiration}`)
+        items[i] = {
+          member,
+          status: 'success',
+          expirationDate: accountExpiration
+        }
+      }
+      // エラー一覧から除外
+      const errIndex = errorMembers.findIndex((m) => m.id === member.id)
+      if (errIndex !== -1) errorMembers.splice(errIndex, 1)
+
+      try {
+        await logout(page, logger)
+      } catch {
+        // noop
+      }
+    } catch (error) {
+      await logger.error(String(error))
+    }
+  }
+  await browser.close()
+
+  return {
+    items,
+    loginFailedMembers,
+    errorMembers
   }
 }
 

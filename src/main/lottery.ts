@@ -4,11 +4,13 @@ import {
   executeLotteries,
   executeLottery,
   confirmLotteryResult,
-  getApplicationStatus
+  getApplicationStatus,
+  getAccountExpirations
 } from './lottery-core'
 import { FileConsoleLogger } from './util'
 import {
   ApplicationStatus,
+  AccountExpirationResult,
   LotterySetting,
   LotteryTarget,
   Progress,
@@ -105,6 +107,25 @@ export function setupLotteryHandlers(mainWindow: Electron.BrowserWindow): void {
         return status
       } catch (err: unknown) {
         await logger.error(`状況確認エラー: ${err instanceof Error ? err.message : String(err)}`)
+        return null
+      }
+    }
+  )
+
+  // 有効期限一覧
+  ipcMain.handle(
+    'get-account-expirations',
+    async (_, profileId: string): Promise<AccountExpirationResult | null> => {
+      try {
+        const members = await loadMembers(profileId)
+
+        const progressCallback = (progress: Progress): void => {
+          mainWindow.webContents.send('get-account-expirations-progress', progress)
+        }
+
+        return await getAccountExpirations(members, progressCallback)
+      } catch (err: unknown) {
+        await logger.error(`有効期限一覧エラー: ${err instanceof Error ? err.message : String(err)}`)
         return null
       }
     }

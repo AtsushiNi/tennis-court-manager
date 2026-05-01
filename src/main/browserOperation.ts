@@ -48,7 +48,8 @@ export async function login(
   page: Page,
   logger: FileConsoleLogger,
   userNumber: number,
-  password: string
+  password: string,
+  hasRandomAct: boolean = true
 ): Promise<boolean> {
   // テニスコート予約サイトにアクセス（タイムアウト60秒、DOMContentLoadedまで待機）
   await page.goto('https://kouen.sports.metro.tokyo.lg.jp/web/', {
@@ -82,7 +83,9 @@ export async function login(
   if (retryCount > 0) {
     logger.info(`再リロード完了 (${retryCount}回実行)`)
   }
-  await actRandom(page, logger)
+  if (hasRandomAct) {
+    await actRandom(page, logger)
+  }
 
   // ログインボタンをクリック
   await page.waitForLoadState('networkidle', { timeout: 60000 })
@@ -97,7 +100,9 @@ export async function login(
   // パスワードを入力
   await page.getByRole('textbox', { name: 'パスワード' }).fill(password)
   logger.info('パスワードを入力')
-  await actRandom(page, logger)
+  if (hasRandomAct) {
+    await actRandom(page, logger)
+  }
 
   // ログインボタンをクリック
   await page.getByRole('button', { name: ' ログイン' }).click()
@@ -295,6 +300,18 @@ export async function confirmLottery(
   })
 
   return remainNumber
+}
+
+/**
+ * カードの有効期限を取得する
+ */
+export async function getAccountExpiration(page: Page): Promise<string> {
+  await page.getByRole('link', { name: 'マイメニュー'}).click()
+  await page.getByRole('link', { name: '利用者情報の変更・削除・更新'}).click()
+  const accountExpiration = await page
+    .locator('#set-user-info tbody tr:nth-child(2) td')
+    .innerText()
+  return accountExpiration
 }
 
 /**

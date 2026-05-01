@@ -3,6 +3,7 @@ import {
   LotteryResult,
   Progress,
   ApplicationStatus,
+  AccountExpirationResult,
   Profile,
   Member,
   SerializedLotteryTarget,
@@ -31,6 +32,8 @@ declare global {
       ) => Promise<LotteryOperationResult>
       getApplicationStatus: (profileId: string) => Promise<ApplicationStatus>
       onGetApplicationStatusProgress: (callback: (progress: Progress) => void) => void
+      getAccountExpirations: (profileId: string) => Promise<AccountExpirationResult | null>
+      onGetAccountExpirationsProgress: (callback: (progress: Progress) => void) => void
       cancelApplication: (profileId: string, applicationKey: string) => Promise<boolean>
       onUpdateLotteryResultProgress: (callback: (progress: Progress) => void) => void
       confirmLotteryResult: (profileId: string) => Promise<LotteryResult[]>

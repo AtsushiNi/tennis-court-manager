@@ -6,7 +6,8 @@ import {
   LotteryTarget,
   Progress,
   SerializedLotteryTarget,
-  ReservationSetting
+  ReservationSetting,
+  AccountExpirationResult
 } from '../common/types'
 
 // Custom APIs for renderer
@@ -31,6 +32,11 @@ const api = {
     ipcRenderer.invoke('get-application-status', profileId),
   onGetApplicationStatusProgress: (callback: (progress: Progress) => void) => {
     ipcRenderer.on('get-application-status-progress', (_, progress) => callback(progress))
+  },
+  getAccountExpirations: (profileId: string): Promise<AccountExpirationResult | null> =>
+    ipcRenderer.invoke('get-account-expirations', profileId),
+  onGetAccountExpirationsProgress: (callback: (progress: Progress) => void) => {
+    ipcRenderer.on('get-account-expirations-progress', (_, progress) => callback(progress))
   },
   cancelApplication: (profileId: string, applicationKey: string) =>
     ipcRenderer.invoke('cancel-application', profileId, applicationKey),
